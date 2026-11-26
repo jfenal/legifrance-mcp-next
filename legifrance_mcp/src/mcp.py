@@ -7,6 +7,7 @@ clients. It uses FastMCP to register and manage MCP capabilities.
 
 from fastmcp import FastMCP
 
+from legifrance_mcp.src.rate_limit import judilibre_rate_limit, legifrance_rate_limit
 from legifrance_mcp.src.settings import settings
 
 # Import tools from the tools package
@@ -65,8 +66,12 @@ class LegifranceMCPServer:
         - rechercher_jurisprudence_judilibre: Recherche de jurisprudence (Judilibre)
         - get_text_history: Historique des modifications d'un texte légal
         """
-        self.mcp.tool()(rechercher_code)
-        self.mcp.tool()(rechercher_dans_texte_legal)
-        self.mcp.tool()(rechercher_jurisprudence_judiciaire)
-        self.mcp.tool()(rechercher_jurisprudence_judilibre)
-        self.mcp.tool()(get_text_history)
+        # Rate-limited at registration time (not by decorating the tool
+        # functions directly) to PISTE's real published per-second quotas --
+        # 2 req/s for Légifrance-backed tools, 20 req/s for Judilibre -- so
+        # unit tests calling these functions directly never hit the limiter.
+        self.mcp.tool()(legifrance_rate_limit(rechercher_code))
+        self.mcp.tool()(legifrance_rate_limit(rechercher_dans_texte_legal))
+        self.mcp.tool()(legifrance_rate_limit(rechercher_jurisprudence_judiciaire))
+        self.mcp.tool()(judilibre_rate_limit(rechercher_jurisprudence_judilibre))
+        self.mcp.tool()(legifrance_rate_limit(get_text_history))
