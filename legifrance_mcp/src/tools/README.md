@@ -64,9 +64,12 @@ self.mcp.tool()(your_tool_function)
 
 ## 📋 **Current Tools**
 
-- `multiply_tool.py` - Basic arithmetic operations
-- `code_review_tool.py` - Generate code review prompts (converted from prompt)
-- `redhat_logo_tool.py` - Asset retrieval (converted from resource)
+- `rechercher_code_tool.py` - Recherche dans les codes juridiques français
+- `rechercher_texte_legal_tool.py` - Recherche dans les textes légaux (lois, ordonnances, décrets, arrêtés)
+- `rechercher_jurisprudence_tool.py` - Recherche de jurisprudence judiciaire (base JURI)
+- `rechercher_judilibre_tool.py` - Recherche de jurisprudence via l'API Judilibre
+- `get_text_history_tool.py` - Historique des modifications d'un texte légal
+- `feedback_tool.py` - Signalement de friction mécanique dans l'usage des outils (jamais soumis automatiquement)
 
 ## ✅ **Best Practices**
 

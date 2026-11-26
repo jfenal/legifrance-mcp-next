@@ -114,6 +114,13 @@ class Settings(BaseSettings):
             "description": "Judilibre KeyId header value, required by rechercher_jurisprudence_judilibre",
         },
     )
+    FEEDBACK_REPO: str = Field(
+        default="jfenal/legifrance-mcp",
+        json_schema_extra={
+            "env": "FEEDBACK_REPO",
+            "description": "GitHub repo (owner/name) legifrance_report_discovery suggests filing feedback issues against",
+        },
+    )
     PYTHON_LOG_LEVEL: str = Field(
         default="INFO",
         json_schema_extra={

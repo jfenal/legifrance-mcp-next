@@ -103,8 +103,8 @@ class TestLegifranceMCPServer:
         # Assert
         # Verify that tool() was called multiple times (once for each tool)
         # __init__ already called _register_mcp_tools() once; this test calls
-        # it again explicitly, so the 5 tools are registered twice over.
-        assert mock_mcp.tool.call_count >= 5
+        # it again explicitly, so the 6 tools are registered twice over.
+        assert mock_mcp.tool.call_count >= 6
 
     def test_server_attributes(self):
         """Test that server has required attributes for tools-first architecture."""

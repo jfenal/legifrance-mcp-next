@@ -39,6 +39,7 @@ dependencies = [
     "psycopg==3.2.3",
     "itsdangerous==2.2.0",
     "requests-oauthlib==2.0.0",
+    "platformdirs==4.14.8",
     # Tracks https://github.com/pylegifrance/pylegifrance/pull/79 (direct
     # PISTE auth, Judilibre support, several bug fixes) -- switch to a
     # released version of upstream pylegifrance once that PR lands.
