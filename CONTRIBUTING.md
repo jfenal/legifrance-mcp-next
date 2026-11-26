@@ -1,4 +1,4 @@
-# Contributing to Template MCP Server
+# Contributing to Legifrance MCP Server
 
 Thank you for your interest in contributing! This guide explains the process for contributing to this project.
 
@@ -20,8 +20,8 @@ Thank you for your interest in contributing! This guide explains the process for
 
 2. **Clone your fork:**
    ```bash
-   git clone https://github.com/<your-username>/template-mcp-server.git
-   cd template-mcp-server
+   git clone https://github.com/<your-username>/legifrance-mcp.git
+   cd legifrance-mcp
    ```
 
 3. **Set up the development environment:**
@@ -186,11 +186,11 @@ async def my_tool(param: str) -> Dict[str, Any]:
 
 ## Adding New MCP Tools
 
-1. **Create the tool module** in `template_mcp_server/src/tools/`:
+1. **Create the tool module** in `legifrance_mcp/src/tools/`:
    ```python
-   # template_mcp_server/src/tools/your_tool.py
+   # legifrance_mcp/src/tools/your_tool.py
    from typing import Any, Dict
-   from template_mcp_server.utils.pylogger import get_python_logger
+   from legifrance_mcp.utils.pylogger import get_python_logger
 
    logger = get_python_logger()
 
@@ -204,9 +204,9 @@ async def my_tool(param: str) -> Dict[str, Any]:
            return {"status": "error", "error": str(e)}
    ```
 
-2. **Register in MCP server** (`template_mcp_server/src/mcp.py`):
+2. **Register in MCP server** (`legifrance_mcp/src/mcp.py`):
    ```python
-   from template_mcp_server.src.tools.your_tool import your_tool_function
+   from legifrance_mcp.src.tools.your_tool import your_tool_function
 
    def _register_mcp_tools(self) -> None:
        # ... existing registrations ...
@@ -217,7 +217,7 @@ async def my_tool(param: str) -> Dict[str, Any]:
    ```python
    # tests/test_your_tool.py
    import pytest
-   from template_mcp_server.src.tools.your_tool import your_tool_function
+   from legifrance_mcp.src.tools.your_tool import your_tool_function
 
    @pytest.mark.asyncio
    async def test_your_tool_success():
@@ -225,7 +225,7 @@ async def my_tool(param: str) -> Dict[str, Any]:
        assert result["status"] == "success"
    ```
 
-4. **Update documentation** in `README.md` and `template_mcp_server/src/tools/README.md`.
+4. **Update documentation** in `README.md` and `legifrance_mcp/src/tools/README.md`.
 
 ## Testing Requirements
 

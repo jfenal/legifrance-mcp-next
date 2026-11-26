@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 import httpx
 
-from template_mcp_server.utils.pylogger import get_python_logger
+from legifrance_mcp.utils.pylogger import get_python_logger
 
 logger = get_python_logger()
 

@@ -23,7 +23,7 @@ USER default
 # copy source code and files
 # --------------------------------------------------------------------------------------------------
 
-COPY template_mcp_server /app/template_mcp_server
+COPY legifrance_mcp /app/legifrance_mcp
 
 # --------------------------------------------------------------------------------------------------
 # Set PYTHONPATH to include /app
@@ -37,4 +37,4 @@ EXPOSE 5001
 # add entrypoint for the container
 # --------------------------------------------------------------------------------------------------
 
-CMD ["/app/.venv/bin/python", "-m", "template_mcp_server.src.main"]
+CMD ["/app/.venv/bin/python", "-m", "legifrance_mcp.src.main"]

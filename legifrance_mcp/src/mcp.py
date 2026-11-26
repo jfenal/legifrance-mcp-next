@@ -1,24 +1,24 @@
-"""Template MCP Server implementation.
+"""Legifrance MCP Server implementation.
 
-This module contains the main Template MCP Server class that provides
+This module contains the main Legifrance MCP Server class that provides
 tools for MCP clients. It uses FastMCP to register and manage MCP capabilities.
 """
 
 from fastmcp import FastMCP
 
-from template_mcp_server.src.settings import settings
+from legifrance_mcp.src.settings import settings
 
 # Import tools from the tools package
-from template_mcp_server.src.tools.code_review_tool import (
+from legifrance_mcp.src.tools.code_review_tool import (
     generate_code_review_prompt,
 )
-from template_mcp_server.src.tools.multiply_tool import (
+from legifrance_mcp.src.tools.multiply_tool import (
     multiply_numbers,
 )
-from template_mcp_server.src.tools.redhat_logo_tool import (
+from legifrance_mcp.src.tools.redhat_logo_tool import (
     get_redhat_logo,
 )
-from template_mcp_server.utils.pylogger import (
+from legifrance_mcp.utils.pylogger import (
     force_reconfigure_all_loggers,
     get_python_logger,
 )
@@ -26,8 +26,8 @@ from template_mcp_server.utils.pylogger import (
 logger = get_python_logger()
 
 
-class TemplateMCPServer:
-    """Main Template MCP Server implementation following tools-first architecture.
+class LegifranceMCPServer:
+    """Main Legifrance MCP Server implementation following tools-first architecture.
 
     This server provides only tools, not resources or prompts, adhering to
     the tools-first architectural pattern for MCP servers.
@@ -44,10 +44,10 @@ class TemplateMCPServer:
 
             self._register_mcp_tools()
 
-            logger.info("Template MCP Server initialized successfully")
+            logger.info("Legifrance MCP Server initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize Template MCP Server: {e}")
+            logger.error(f"Failed to initialize Legifrance MCP Server: {e}")
             raise
 
     def _register_mcp_tools(self) -> None:

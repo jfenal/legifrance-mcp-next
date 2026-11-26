@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from template_mcp_server.src.settings import Settings, parse_sso_scopes, validate_config
+from legifrance_mcp.src.settings import Settings, parse_sso_scopes, validate_config
 
 
 class TestSettings:

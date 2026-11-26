@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: template-mcp-server-config
+  name: legifrance-mcp-config
   labels:
-    app: template-mcp-server
+    app: legifrance-mcp
     component: mcp-server
 data:
   MCP_PORT: "5001"

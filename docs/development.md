@@ -27,8 +27,8 @@
 2. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/redhat-data-and-ai/template-mcp-server
-   cd template-mcp-server
+   git clone https://github.com/jfenal/legifrance-mcp
+   cd legifrance-mcp
    ```
 3. **Create and activate a virtual environment with uv:**
 
@@ -58,13 +58,13 @@
 
    ```bash
    # Using the installed console script
-   template-mcp-server
+   legifrance-mcp
 
    # Or directly with Python module
-   python -m template_mcp_server.src.main
+   python -m legifrance_mcp.src.main
 
    # Or using uv to run directly
-   uv run python -m template_mcp_server.src.main
+   uv run python -m legifrance_mcp.src.main
    ```
 
 ## Configuration Options
@@ -139,7 +139,7 @@ The project includes a comprehensive test suite covering unit tests, integration
 2. **Run tests with coverage reporting:**
 
    ```bash
-   pytest --cov=template_mcp_server --cov-report=html --cov-report=term
+   pytest --cov=legifrance_mcp --cov-report=html --cov-report=term
    ```
 3. **Run tests by category:**
 
@@ -228,12 +228,12 @@ The project includes a comprehensive test suite covering unit tests, integration
 2. **Type checking with MyPy:**
 
    ```bash
-   mypy template_mcp_server/
+   mypy legifrance_mcp/
    ```
 3. **Docstring validation:**
 
    ```bash
-   pydocstyle template_mcp_server/ --convention=google
+   pydocstyle legifrance_mcp/ --convention=google
    ```
 4. **Run all pre-commit checks:**
 

@@ -4,40 +4,40 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from template_mcp_server.src.mcp import TemplateMCPServer
+from legifrance_mcp.src.mcp import LegifranceMCPServer
 
 
-class TestTemplateMCPServer:
-    """Test the TemplateMCPServer class."""
+class TestLegifranceMCPServer:
+    """Test the LegifranceMCPServer class."""
 
-    @patch("template_mcp_server.src.mcp.force_reconfigure_all_loggers")
-    @patch("template_mcp_server.src.mcp.settings")
-    @patch("template_mcp_server.src.mcp.FastMCP")
-    @patch("template_mcp_server.src.mcp.logger")
+    @patch("legifrance_mcp.src.mcp.force_reconfigure_all_loggers")
+    @patch("legifrance_mcp.src.mcp.settings")
+    @patch("legifrance_mcp.src.mcp.FastMCP")
+    @patch("legifrance_mcp.src.mcp.logger")
     def test_init_success(
         self, mock_logger, mock_fastmcp, mock_settings, mock_force_reconfigure
     ):
-        """Test successful initialization of TemplateMCPServer."""
+        """Test successful initialization of LegifranceMCPServer."""
         # Arrange
         mock_mcp = Mock()
         mock_fastmcp.return_value = mock_mcp
         mock_settings.PYTHON_LOG_LEVEL = "INFO"
 
         # Act
-        server = TemplateMCPServer()
+        server = LegifranceMCPServer()
 
         # Assert
         assert server.mcp == mock_mcp
         mock_logger.info.assert_called_with(
-            "Template MCP Server initialized successfully"
+            "Legifrance MCP Server initialized successfully"
         )
         # In tools-first architecture, we only register tools
         mock_mcp.tool.assert_called()
 
-    @patch("template_mcp_server.src.mcp.force_reconfigure_all_loggers")
-    @patch("template_mcp_server.src.mcp.settings")
-    @patch("template_mcp_server.src.mcp.FastMCP")
-    @patch("template_mcp_server.src.mcp.logger")
+    @patch("legifrance_mcp.src.mcp.force_reconfigure_all_loggers")
+    @patch("legifrance_mcp.src.mcp.settings")
+    @patch("legifrance_mcp.src.mcp.FastMCP")
+    @patch("legifrance_mcp.src.mcp.logger")
     def test_init_failure(
         self, mock_logger, mock_fastmcp, mock_settings, mock_force_reconfigure
     ):
@@ -48,15 +48,15 @@ class TestTemplateMCPServer:
 
         # Act & Assert
         with pytest.raises(Exception, match="Test error"):
-            TemplateMCPServer()
+            LegifranceMCPServer()
 
         mock_logger.error.assert_called_with(
-            "Failed to initialize Template MCP Server: Test error"
+            "Failed to initialize Legifrance MCP Server: Test error"
         )
 
-    @patch("template_mcp_server.src.mcp.force_reconfigure_all_loggers")
-    @patch("template_mcp_server.src.mcp.settings")
-    @patch("template_mcp_server.src.mcp.FastMCP")
+    @patch("legifrance_mcp.src.mcp.force_reconfigure_all_loggers")
+    @patch("legifrance_mcp.src.mcp.settings")
+    @patch("legifrance_mcp.src.mcp.FastMCP")
     def test_register_mcp_tools(
         self, mock_fastmcp, mock_settings, mock_force_reconfigure
     ):
@@ -65,7 +65,7 @@ class TestTemplateMCPServer:
         mock_mcp = Mock()
         mock_fastmcp.return_value = mock_mcp
         mock_settings.PYTHON_LOG_LEVEL = "INFO"
-        server = TemplateMCPServer()
+        server = LegifranceMCPServer()
 
         # Act
         server._register_mcp_tools()
@@ -73,9 +73,9 @@ class TestTemplateMCPServer:
         # Assert
         mock_mcp.tool.assert_called()
 
-    @patch("template_mcp_server.src.mcp.force_reconfigure_all_loggers")
-    @patch("template_mcp_server.src.mcp.settings")
-    @patch("template_mcp_server.src.mcp.FastMCP")
+    @patch("legifrance_mcp.src.mcp.force_reconfigure_all_loggers")
+    @patch("legifrance_mcp.src.mcp.settings")
+    @patch("legifrance_mcp.src.mcp.FastMCP")
     def test_register_mcp_tools_functionality(
         self, mock_fastmcp, mock_settings, mock_force_reconfigure
     ):
@@ -84,7 +84,7 @@ class TestTemplateMCPServer:
         mock_mcp = Mock()
         mock_fastmcp.return_value = mock_mcp
         mock_settings.PYTHON_LOG_LEVEL = "INFO"
-        server = TemplateMCPServer()
+        server = LegifranceMCPServer()
 
         # Act
         server._register_mcp_tools()
@@ -99,12 +99,12 @@ class TestTemplateMCPServer:
         """Test that server has required attributes for tools-first architecture."""
         # Arrange & Act
         with (
-            patch("template_mcp_server.src.mcp.settings") as mock_settings,
-            patch("template_mcp_server.src.mcp.FastMCP"),
-            patch("template_mcp_server.src.mcp.force_reconfigure_all_loggers"),
+            patch("legifrance_mcp.src.mcp.settings") as mock_settings,
+            patch("legifrance_mcp.src.mcp.FastMCP"),
+            patch("legifrance_mcp.src.mcp.force_reconfigure_all_loggers"),
         ):
             mock_settings.PYTHON_LOG_LEVEL = "INFO"
-            server = TemplateMCPServer()
+            server = LegifranceMCPServer()
 
         # Assert
         assert hasattr(server, "mcp")
@@ -114,12 +114,12 @@ class TestTemplateMCPServer:
         """Test that server adheres to tools-first architecture by not having resource/prompt methods."""
         # Arrange & Act
         with (
-            patch("template_mcp_server.src.mcp.settings") as mock_settings,
-            patch("template_mcp_server.src.mcp.FastMCP"),
-            patch("template_mcp_server.src.mcp.force_reconfigure_all_loggers"),
+            patch("legifrance_mcp.src.mcp.settings") as mock_settings,
+            patch("legifrance_mcp.src.mcp.FastMCP"),
+            patch("legifrance_mcp.src.mcp.force_reconfigure_all_loggers"),
         ):
             mock_settings.PYTHON_LOG_LEVEL = "INFO"
-            server = TemplateMCPServer()
+            server = LegifranceMCPServer()
 
         # Assert - These methods should NOT exist in tools-first architecture
         assert not hasattr(server, "_register_mcp_resources"), (

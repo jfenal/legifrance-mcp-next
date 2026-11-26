@@ -1,11 +1,11 @@
-"""Multiply tool for the Template MCP Server.
+"""Multiply tool for the Legifrance MCP Server.
 
 This tool demonstrates basic arithmetic functionality by multiplying two numbers.
 """
 
 from typing import Any, Dict
 
-from template_mcp_server.utils.pylogger import get_python_logger
+from legifrance_mcp.utils.pylogger import get_python_logger
 
 logger = get_python_logger()
 

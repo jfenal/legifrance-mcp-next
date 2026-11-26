@@ -1,16 +1,16 @@
-"""LangGraph MCP Client Example - Template MCP Server Integration.
+"""LangGraph MCP Client Example - Legifrance MCP Server Integration.
 
 This example demonstrates how to create a LangGraph agent that connects to the
-template MCP server and uses its available tools for mathematical operations.
+legifrance MCP server and uses its available tools for mathematical operations.
 
 The example shows:
 - Setting up a LangGraph ReAct agent with Google's Gemini model
-- Connecting to the template MCP server via HTTP transport
+- Connecting to the legifrance MCP server via HTTP transport
 - Using MCP tools for mathematical calculations
 - Handling tool calls and responses in a conversational context
 
 Prerequisites:
-- Template MCP server must be running on http://localhost:5001
+- Legifrance MCP server must be running on http://localhost:5001
 - Google Generative AI credentials must be configured via
     GEMINI_API_KEY environment variable or
     GOOGLE_APPLICATION_CREDENTIALS environment variable
@@ -130,7 +130,7 @@ async def get_agent_redhat():
 
     The agent is configured with:
     - Google Generative AI (Gemini 2.0 Flash) as the language model
-    - Tools from the template MCP server (e.g., multiply_numbers)
+    - Tools from the legifrance MCP server (e.g., multiply_numbers)
     - A system prompt that guides tool usage and response formatting
 
     Note:
@@ -140,7 +140,7 @@ async def get_agent_redhat():
 
     Yields:
         A configured LangGraph agent that can use MCP tools for calculations
-        and other operations provided by the template MCP server.
+        and other operations provided by the legifrance MCP server.
 
     Example:
         async with get_agent_redhat() as agent:
@@ -152,7 +152,7 @@ async def get_agent_redhat():
     # Initialize MCP client and get tools
     client = MultiServerMCPClient(
         {
-            "template_mcp_server": {
+            "legifrance_mcp": {
                 "url": "http://localhost:5001/mcp/",
                 "transport": "streamable_http",
             },
@@ -206,7 +206,7 @@ async def main():
     """Run the complete LangGraph MCP client demonstration.
 
     This main function orchestrates all the demonstration examples and provides
-    a comprehensive overview of LangGraph integration with the template MCP server.
+    a comprehensive overview of LangGraph integration with the legifrance MCP server.
 
     The demonstration includes:
     - Tool call examples showing mathematical operations
@@ -219,7 +219,7 @@ async def main():
     print("🚀 LangGraph MCP Client Examples")
     print("=" * 60)
     print("This demonstrates various capabilities of the LangGraph agent")
-    print("connected to the template MCP server.")
+    print("connected to the legifrance MCP server.")
 
     try:
         # Run all examples
@@ -233,7 +233,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ Error running examples: {e}")
-        print("Make sure the template MCP server is running on http://localhost:5001")
+        print("Make sure the legifrance MCP server is running on http://localhost:5001")
 
 
 if __name__ == "__main__":

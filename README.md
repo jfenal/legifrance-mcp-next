@@ -1,10 +1,10 @@
-# Template MCP Server
+# Legifrance MCP Server
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12,3.13-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/redhat-data-and-ai/template-mcp-server/actions/workflows/test.yml/badge.svg)](https://github.com/redhat-data-and-ai/template-mcp-server/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/redhat-data-and-ai/template-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/redhat-data-and-ai/template-mcp-server)
+[![Tests](https://github.com/jfenal/legifrance-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/jfenal/legifrance-mcp/actions/workflows/test.yml)
+[![Coverage](https://codecov.io/gh/jfenal/legifrance-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/jfenal/legifrance-mcp)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/redhat-data-and-ai/template-mcp-server)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/jfenal/legifrance-mcp)
 
 A production-ready template for developing Model Context Protocol (MCP) servers using Python and FastMCP. This server provides a foundation for creating MCP-compliant servers with comprehensive examples of tools, structured logging, configuration management, and containerized deployment.
 
@@ -25,8 +25,8 @@ The template includes three example MCP tools: a multiply calculator, a code rev
 ## Quick Start
 
 ```bash
-git clone https://github.com/redhat-data-and-ai/template-mcp-server
-cd template-mcp-server
+git clone https://github.com/jfenal/legifrance-mcp
+cd legifrance-mcp
 make install        # creates venv, installs deps + pre-commit hooks
 make local          # starts server on localhost:5001
 ```
@@ -50,7 +50,7 @@ pre-commit install
 
 # Configure and run
 cp .env.example .env
-template-mcp-server
+legifrance-mcp
 
 # Verify
 curl http://localhost:5001/health
@@ -69,7 +69,7 @@ curl http://localhost:5001/health
 ### Option 2: Manual Clone
 
 ```bash
-git clone https://github.com/redhat-data-and-ai/template-mcp-server.git my-mcp-server
+git clone https://github.com/jfenal/legifrance-mcp.git my-mcp-server
 cd my-mcp-server
 rm -rf .git
 git init
@@ -77,11 +77,11 @@ git init
 
 ### Rename Checklist
 
-After creating your project, replace all references to `template-mcp-server` and `template_mcp_server` with your project name. The following files require updates:
+After creating your project, replace all references to `legifrance-mcp` and `legifrance_mcp` with your project name. The following files require updates:
 
 | File / Directory          | What to Change                                                                                                                |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `template_mcp_server/`  | Rename the package directory (e.g.,`my_mcp_server/`)                                                                        |
+| `legifrance_mcp/`  | Rename the package directory (e.g.,`my_mcp_server/`)                                                                        |
 | `pyproject.toml`        | `name`, `project.scripts` entry, `[project.urls]`, `[tool.coverage.run] source`                                       |
 | `Makefile`              | References in `lint`, `local`, and deployment targets                                                                     |
 | `Containerfile`         | `COPY` source path and `CMD` module path                                                                                  |
@@ -137,8 +137,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ```bash
 # Fork, clone, and set up
-git clone https://github.com/<your-username>/template-mcp-server.git
-cd template-mcp-server
+git clone https://github.com/<your-username>/legifrance-mcp.git
+cd legifrance-mcp
 make install
 
 # Create a branch, make changes, verify

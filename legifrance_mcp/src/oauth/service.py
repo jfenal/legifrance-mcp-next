@@ -15,9 +15,9 @@ import secrets
 import time
 from typing import Any, Dict, List, Optional
 
-from template_mcp_server.src.settings import settings
-from template_mcp_server.src.storage.storage_service import StorageService
-from template_mcp_server.utils.pylogger import get_python_logger
+from legifrance_mcp.src.settings import settings
+from legifrance_mcp.src.storage.storage_service import StorageService
+from legifrance_mcp.utils.pylogger import get_python_logger
 
 logger = get_python_logger(settings.PYTHON_LOG_LEVEL)
 

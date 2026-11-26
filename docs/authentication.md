@@ -1,6 +1,6 @@
 # Authentication Guide
 
-This guide explains how authentication works in the template MCP server, how to configure it, and how to troubleshoot common issues.
+This guide explains how authentication works in the legifrance MCP server, how to configure it, and how to troubleshoot common issues.
 
 ## Overview
 
@@ -218,7 +218,7 @@ curl http://localhost:5001/.well-known/oauth-authorization-server
 
 ## Customizing the OAuth Flow
 
-The OAuth implementation lives in `template_mcp_server/src/oauth/` with these components:
+The OAuth implementation lives in `legifrance_mcp/src/oauth/` with these components:
 
 | File | Purpose |
 |---|---|

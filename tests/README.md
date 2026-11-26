@@ -25,7 +25,7 @@ pytest
 pytest -v
 
 # With coverage report
-pytest --cov=template_mcp_server --cov-report=html
+pytest --cov=legifrance_mcp --cov-report=html
 ```
 
 ### **Specific Test Categories:**

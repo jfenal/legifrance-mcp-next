@@ -12,9 +12,9 @@ from typing import Any, Dict, Optional
 
 from requests_oauthlib import OAuth2Session
 
-from template_mcp_server.src.oauth.introspection import create_token_introspector
-from template_mcp_server.src.settings import settings
-from template_mcp_server.utils.pylogger import get_python_logger
+from legifrance_mcp.src.oauth.introspection import create_token_introspector
+from legifrance_mcp.src.settings import settings
+from legifrance_mcp.utils.pylogger import get_python_logger
 
 logger = get_python_logger()
 

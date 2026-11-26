@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """MCP Server Demo - Using FastMCP Client.
 
-This example demonstrates how to connect to the running template MCP server
+This example demonstrates how to connect to the running legifrance MCP server
 using the FastMCP Client and make actual MCP protocol calls.
 
 Prerequisites:
-- Template MCP server must be running on http://localhost:5001
+- Legifrance MCP server must be running on http://localhost:5001
 - Install dependencies: pip install fastmcp httpx requests
 """
 
@@ -16,7 +16,7 @@ from fastmcp import Client
 
 
 class FastMCPClient:
-    """Demo client for the template MCP server using FastMCP Client."""
+    """Demo client for the legifrance MCP server using FastMCP Client."""
 
     def __init__(self, server_url: str):
         """Initialize the MCP client demo.
@@ -29,7 +29,7 @@ class FastMCPClient:
 
         # MCP configuration
         self.config = {
-            "mcpServers": {"template_mcp_server": {"url": f"{server_url}/mcp"}}
+            "mcpServers": {"legifrance_mcp": {"url": f"{server_url}/mcp"}}
         }
 
     def check_server_health(self):
@@ -88,7 +88,7 @@ class FastMCPClient:
 
     async def run_demo(self):
         """Run the complete demo using FastMCP Client."""
-        print("Template MCP Server Demo with FastMCP Client")
+        print("Legifrance MCP Server Demo with FastMCP Client")
         print("=" * 60)
 
         # Check server health
