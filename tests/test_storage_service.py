@@ -293,6 +293,7 @@ class TestClientMethods:
             "Test Client", ["http://localhost:3000"]
         )
 
+        assert result is not None
         assert result["id"] == "client123"
         assert result["name"] == "Test Client"
         assert result["redirect_uris"] == ["http://localhost:3000"]
@@ -481,6 +482,7 @@ class TestClientMethods:
 
         result = await service.get_client("client123")
 
+        assert result is not None
         assert result["id"] == "client123"
         assert result["name"] == "Test Client"
 
@@ -591,6 +593,7 @@ class TestAuthorizationCodeMethods:
 
         result = await service.get_authorization_code("code123")
 
+        assert result is not None
         assert result["client_id"] == "client123"
         assert result["snowflake_token"]["access_token"] == "token123"
 
@@ -631,6 +634,7 @@ class TestAuthorizationCodeMethods:
 
         result = await service.get_authorization_code("code123")
 
+        assert result is not None
         assert result["client_id"] == "client123"
         assert result["snowflake_token"] is None
 
@@ -794,6 +798,7 @@ class TestAccessTokenMethods:
 
         result = await service.get_access_token("token123")
 
+        assert result is not None
         assert result["client_id"] == "client123"
         assert result["token_type"] == "Bearer"
 
@@ -898,6 +903,7 @@ class TestRefreshTokenMethods:
 
         result = await service.get_refresh_token("refresh123")
 
+        assert result is not None
         assert result["client_id"] == "client123"
         assert result["access_token"] == "access123"
 
@@ -1014,6 +1020,7 @@ class TestStorageServiceIntegration:
 
         # Get client
         client = await service.get_client("client123")
+        assert client is not None
         assert client["id"] == "client123"
 
         # Test authorization code operations
@@ -1033,8 +1040,162 @@ class TestStorageServiceIntegration:
 
         # Get authorization code
         code = await service.get_authorization_code("code123")
+        assert code is not None
         assert code["client_id"] == "client123"
 
         # Delete authorization code
         result = await service.delete_authorization_code("code123")
         assert result is True
+
+
+class TestStorageServiceNoPoolAndErrorHandling:
+    """Test the "no pool" and "except Exception" defensive branches.
+
+    Every CRUD method on StorageService follows the same shape: return a
+    safe default if self.pool is unset, and return the same safe default
+    (logging the error) if anything inside the `async with self.pool.acquire()`
+    block raises. Covered uniformly here rather than per-method above.
+    """
+
+    @pytest.mark.asyncio
+    async def test_get_client_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.get_client("client123") is None
+
+    @pytest.mark.asyncio
+    async def test_get_client_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.get_client("client123") is None
+
+    @pytest.mark.asyncio
+    async def test_store_authorization_code_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.store_authorization_code("code123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_store_authorization_code_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.store_authorization_code("code123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_get_authorization_code_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.get_authorization_code("code123") is None
+
+    @pytest.mark.asyncio
+    async def test_get_authorization_code_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.get_authorization_code("code123") is None
+
+    @pytest.mark.asyncio
+    async def test_update_authorization_code_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.update_authorization_code_token("code123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_update_authorization_code_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.update_authorization_code_token("code123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_delete_authorization_code_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.delete_authorization_code("code123") is False
+
+    @pytest.mark.asyncio
+    async def test_delete_authorization_code_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.delete_authorization_code("code123") is False
+
+    @pytest.mark.asyncio
+    async def test_store_access_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.store_access_token("token123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_store_access_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.store_access_token("token123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_get_access_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.get_access_token("token123") is None
+
+    @pytest.mark.asyncio
+    async def test_get_access_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.get_access_token("token123") is None
+
+    @pytest.mark.asyncio
+    async def test_delete_access_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.delete_access_token("token123") is False
+
+    @pytest.mark.asyncio
+    async def test_delete_access_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.delete_access_token("token123") is False
+
+    @pytest.mark.asyncio
+    async def test_store_refresh_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.store_refresh_token("token123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_store_refresh_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.store_refresh_token("token123", {}) is False
+
+    @pytest.mark.asyncio
+    async def test_get_refresh_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.get_refresh_token("token123") is None
+
+    @pytest.mark.asyncio
+    async def test_get_refresh_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.get_refresh_token("token123") is None
+
+    @pytest.mark.asyncio
+    async def test_delete_refresh_token_no_pool(self):
+        service = StorageService()
+        service.pool = None
+        assert await service.delete_refresh_token("token123") is False
+
+    @pytest.mark.asyncio
+    async def test_delete_refresh_token_pool_error(self):
+        service = StorageService()
+        service.pool = Mock()
+        service.pool.acquire = Mock(side_effect=RuntimeError("db error"))
+        assert await service.delete_refresh_token("token123") is False

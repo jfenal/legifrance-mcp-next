@@ -38,7 +38,9 @@ def base64url_encode(data: bytes) -> str:
     return encoded.rstrip("=")
 
 
-def verify_code_challenge(code_verifier: str, code_challenge: str) -> bool:
+def verify_code_challenge(
+    code_verifier: Optional[str], code_challenge: Optional[str]
+) -> bool:
     """Verify PKCE code challenge using S256 method.
 
     Args:
@@ -49,6 +51,9 @@ def verify_code_challenge(code_verifier: str, code_challenge: str) -> bool:
         bool: True if verification succeeds, False otherwise
     """
     try:
+        if code_verifier is None or code_challenge is None:
+            return False
+
         # Compute SHA256 hash of the code verifier
         hash_bytes = hashlib.sha256(code_verifier.encode("utf-8")).digest()
 

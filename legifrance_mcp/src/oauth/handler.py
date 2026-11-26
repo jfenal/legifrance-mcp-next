@@ -100,7 +100,9 @@ class OAuth2Handler:
         return introspection_result
 
     @staticmethod
-    def verify_authorization_header(auth_header: str) -> Optional[Dict[str, Any]]:
+    def verify_authorization_header(
+        auth_header: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
         """Verify Authorization header with Bearer token via SSO introspection."""
         if not auth_header or not auth_header.startswith("Bearer "):
             logger.warning("Invalid authorization header format")

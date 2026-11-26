@@ -209,6 +209,7 @@ class TestClientManagement:
             result = await validate_client("client123", "secret123")
 
             mock_storage.get_client.assert_called_once_with("client123")
+            assert result is not None
             assert result["id"] == "client123"
 
     @pytest.mark.asyncio
@@ -256,6 +257,7 @@ class TestClientManagement:
             return_value=mock_storage,
         ):
             result = await validate_client("client123")
+            assert result is not None
             assert result["id"] == "client123"
 
     @pytest.mark.asyncio
@@ -390,6 +392,7 @@ class TestAuthorizationCodeFlow:
             return_value=mock_storage,
         ):
             result = await validate_authorization_code("code123")
+            assert result is not None
             assert result["client_id"] == "client123"
 
     @pytest.mark.asyncio
@@ -487,6 +490,7 @@ class TestTokenManagement:
             return_value=mock_storage,
         ):
             result = await retrieve_access_token("token123")
+            assert result is not None
             assert result["client_id"] == "client123"
             mock_storage.get_access_token.assert_called_once_with("token123")
 
@@ -519,6 +523,7 @@ class TestTokenManagement:
             return_value=mock_storage,
         ):
             result = await retrieve_refresh_token("refresh123")
+            assert result is not None
             assert result["client_id"] == "client123"
             mock_storage.get_refresh_token.assert_called_once_with("refresh123")
 
@@ -536,6 +541,7 @@ class TestTokenManagement:
             return_value=mock_storage,
         ):
             result = await validate_refresh_token("refresh123")
+            assert result is not None
             assert result["client_id"] == "client123"
 
     @pytest.mark.asyncio
@@ -669,6 +675,7 @@ class TestOAuthServiceIntegration:
 
                 # 4. Validate authorization code
                 code_data = await validate_authorization_code("code123")
+                assert code_data is not None
                 assert code_data["client_id"] == "client123"
 
                 # 5. Mark code as used
@@ -963,8 +970,10 @@ class TestOAuthServiceConcurrency:
         results = await asyncio.gather(*tasks)
 
         # All should succeed since code is valid
-        assert all(result is not None for result in results)
-        assert all(result["client_id"] == "test_client" for result in results)
+        assert all(
+            result is not None and result["client_id"] == "test_client"
+            for result in results
+        )
 
     @pytest.mark.asyncio
     async def test_concurrent_client_registration(self):

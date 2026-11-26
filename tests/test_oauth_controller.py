@@ -8,6 +8,12 @@ from legifrance_mcp.src.oauth import controller
 from legifrance_mcp.src.oauth.service import OAuthService
 
 
+def _detail(exc: HTTPException) -> dict:
+    """Narrow HTTPException.detail (typed str | None by starlette's stubs) to the dict this controller always raises with."""
+    assert isinstance(exc.detail, dict)
+    return exc.detail
+
+
 class TestOAuthControllerHandleCallback:
     """Test handle_callback function."""
 
@@ -87,7 +93,7 @@ class TestOAuthControllerHandleCallback:
             with pytest.raises(HTTPException) as exc_info:
                 await controller.handle_callback(mock_request, oauth_service)
             assert exc_info.value.status_code == 400
-            assert exc_info.value.detail["error"] == "invalid_request"
+            assert _detail(exc_info.value)["error"] == "invalid_request"
 
     @pytest.mark.asyncio
     async def test_handle_callback_missing_code_param(self):
@@ -103,10 +109,10 @@ class TestOAuthControllerHandleCallback:
         with pytest.raises(HTTPException) as exc_info:
             await controller.handle_callback(mock_request, oauth_service)
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_request"
+        assert _detail(exc_info.value)["error"] == "invalid_request"
         assert (
             "Missing code or state parameter"
-            in exc_info.value.detail["error_description"]
+            in _detail(exc_info.value)["error_description"]
         )
 
     @pytest.mark.asyncio
@@ -123,7 +129,7 @@ class TestOAuthControllerHandleCallback:
         with pytest.raises(HTTPException) as exc_info:
             await controller.handle_callback(mock_request, oauth_service)
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_request"
+        assert _detail(exc_info.value)["error"] == "invalid_request"
 
     @patch("legifrance_mcp.src.oauth.controller.settings")
     @pytest.mark.asyncio
@@ -237,6 +243,118 @@ class TestOAuthControllerHandleAuthorize:
         assert exc_info.value.status_code == 400
         assert "unsupported_response_type" in str(exc_info.value.detail)
 
+    @pytest.mark.asyncio
+    async def test_handle_authorize_missing_required_parameters(self):
+        """Test authorization without response_type/client_id/redirect_uri."""
+        mock_request = Mock()
+        mock_request.query_params = {
+            "code_challenge": "challenge123",
+            "code_challenge_method": "S256",
+        }
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_authorize(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+        assert (
+            "Missing required parameters"
+            in _detail(exc_info.value)["error_description"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_authorize_redirect_uri_mismatch(self):
+        """Test authorization when redirect_uri isn't registered for the client."""
+        mock_request = Mock()
+        mock_request.query_params = {
+            "response_type": "code",
+            "client_id": "client123",
+            "redirect_uri": "http://evil.example.com/callback",
+            "code_challenge": "challenge123",
+            "code_challenge_method": "S256",
+        }
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(
+            return_value={"redirect_uris": ["http://localhost:3000/callback"]}
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_authorize(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+        assert "Invalid redirect_uri" in _detail(exc_info.value)["error_description"]
+
+    @pytest.mark.asyncio
+    async def test_handle_authorize_success(self):
+        """Test the full successful authorization flow redirects to the IdP."""
+        mock_request = Mock()
+        mock_request.query_params = {
+            "response_type": "code",
+            "client_id": "client123",
+            "redirect_uri": "http://localhost:3000/callback",
+            "scope": "read",
+            "code_challenge": "challenge123",
+            "code_challenge_method": "S256",
+            "state": "state_123",
+        }
+        mock_request.session = {}
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(
+            return_value={"redirect_uris": ["http://localhost:3000/callback"]}
+        )
+        oauth_service.create_authorization_code = AsyncMock(
+            return_value="auth_code_123"
+        )
+
+        with patch("legifrance_mcp.src.oauth.controller.OAuth2Handler") as mock_handler:
+            mock_handler.get_authorization_url.return_value = (
+                "https://idp.example.com/authorize",
+                "idp_state",
+            )
+
+            result = await controller.handle_authorize(mock_request, oauth_service)
+
+        assert isinstance(result, RedirectResponse)
+        assert result.status_code == 302
+        assert result.headers["location"] == "https://idp.example.com/authorize"
+        assert mock_request.session["user_details"]["auth_code"] == "auth_code_123"
+        oauth_service.create_authorization_code.assert_called_once_with(
+            "client123",
+            "http://localhost:3000/callback",
+            "read",
+            "challenge123",
+            "S256",
+            "state_123",
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_authorize_unexpected_error_returns_server_error(self):
+        """Test that an unexpected exception is converted to a 500 server_error."""
+        mock_request = Mock()
+        mock_request.query_params = {
+            "response_type": "code",
+            "client_id": "client123",
+            "redirect_uri": "http://localhost:3000/callback",
+            "code_challenge": "challenge123",
+            "code_challenge_method": "S256",
+        }
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(
+            side_effect=RuntimeError("storage down")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_authorize(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 500
+        assert _detail(exc_info.value)["error"] == "server_error"
+
 
 class TestOAuthControllerHandleToken:
     """Test handle_token function."""
@@ -316,6 +434,99 @@ class TestOAuthControllerHandleToken:
 
         assert exc_info.value.status_code == 400
         assert "unsupported_grant_type" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_handle_token_missing_grant_type(self):
+        """Test token endpoint with no grant_type at all."""
+        form_data = {"code": "code123"}
+
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(return_value=form_data)
+        mock_request.json = AsyncMock()
+        mock_request.body = AsyncMock(return_value=b"")
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_token(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+        assert "Missing grant_type" in _detail(exc_info.value)["error_description"]
+
+    @pytest.mark.asyncio
+    async def test_handle_token_refresh_token_validation_error(self):
+        """Test token endpoint with an invalid refresh_token request payload."""
+        form_data = {"grant_type": "refresh_token"}  # missing required refresh_token
+
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(return_value=form_data)
+        mock_request.json = AsyncMock()
+        mock_request.body = AsyncMock(return_value=b"")
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_token(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert (
+            "Invalid refresh_token request"
+            in _detail(exc_info.value)["error_description"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_token_client_credentials_validation_error(self):
+        """Test token endpoint with an invalid client_credentials request payload."""
+        form_data = {"grant_type": "client_credentials", "scope": 123}  # wrong type
+
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(return_value=form_data)
+        mock_request.json = AsyncMock()
+        mock_request.body = AsyncMock(return_value=b"")
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_token(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert (
+            "Invalid client_credentials request"
+            in _detail(exc_info.value)["error_description"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_token_unexpected_error_returns_server_error(self):
+        """Test that an unexpected exception during token handling is a 500 server_error."""
+        form_data = {
+            "grant_type": "authorization_code",
+            "code": "code123",
+            "redirect_uri": "http://localhost:3000/callback",
+            "client_id": "client123",
+            "client_secret": "secret123",
+            "code_verifier": "verifier123",
+        }
+
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(return_value=form_data)
+        mock_request.json = AsyncMock()
+        mock_request.body = AsyncMock(return_value=b"")
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_authorization_code = AsyncMock(
+            side_effect=RuntimeError("storage down")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_token(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 500
+        assert _detail(exc_info.value)["error"] == "server_error"
 
     @pytest.mark.asyncio
     async def test_handle_token_missing_parameters(self):
@@ -546,9 +757,45 @@ class TestOAuthControllerHandleRegister:
             "read write",  # Default scope from Pydantic model
         )
 
-        # Convert Pydantic model to dict for comparison
-        result_dict = result.model_dump() if hasattr(result, "model_dump") else result
+        # handle_register's return type is always ClientRegistrationResponse.
+        result_dict = result.model_dump()
         assert result_dict["client_id"] == "client123"
+
+    @pytest.mark.asyncio
+    async def test_handle_register_invalid_request_data(self):
+        """Test registration with invalid request data raises a 400 ValidationError."""
+        mock_request = Mock()
+        mock_request.json = AsyncMock(return_value={"redirect_uris": "not-a-list"})
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_register(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+
+    @pytest.mark.asyncio
+    async def test_handle_register_unexpected_error_returns_server_error(self):
+        """Test that an unexpected exception during registration is a 500 server_error."""
+        registration_data = {
+            "client_name": "Test Client",
+            "redirect_uris": ["http://localhost:3000/callback"],
+        }
+
+        mock_request = Mock()
+        mock_request.json = AsyncMock(return_value=registration_data)
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.register_client = AsyncMock(
+            side_effect=RuntimeError("storage down")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_register(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 500
+        assert _detail(exc_info.value)["error"] == "server_error"
 
 
 class TestOAuthControllerHandleIntrospect:
@@ -651,6 +898,165 @@ class TestOAuthControllerHandleIntrospect:
         assert exc_info.value.status_code == 401
         assert "invalid_client" in str(exc_info.value.detail)
 
+    @pytest.mark.asyncio
+    async def test_handle_introspect_json_content_type(self):
+        """Test token introspection parses a JSON request body."""
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/json"}
+        mock_request.json = AsyncMock(
+            return_value={
+                "token": "token123",
+                "client_id": "client123",
+                "client_secret": "secret123",
+            }
+        )
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(return_value={"id": "client123"})
+
+        with patch(
+            "legifrance_mcp.src.oauth.controller.OAuth2Handler.introspect_token"
+        ) as mock_introspect:
+            mock_introspect.return_value = {"active": True}
+
+            result = await controller.handle_introspect(mock_request, oauth_service)
+
+        assert result["active"] is True
+
+    @pytest.mark.asyncio
+    async def test_handle_introspect_form_parsing_falls_back_to_query_params(self):
+        """Test that a form-parsing failure falls back to query params."""
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(side_effect=RuntimeError("bad form"))
+        mock_request.json = AsyncMock()
+        mock_request.query_params = {
+            "token": "token123",
+            "client_id": "client123",
+            "client_secret": "secret123",
+        }
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(return_value={"id": "client123"})
+
+        with patch(
+            "legifrance_mcp.src.oauth.controller.OAuth2Handler.introspect_token"
+        ) as mock_introspect:
+            mock_introspect.return_value = {"active": True}
+
+            result = await controller.handle_introspect(mock_request, oauth_service)
+
+        assert result["active"] is True
+
+    @pytest.mark.asyncio
+    async def test_handle_introspect_missing_token(self):
+        """Test token introspection without a token parameter raises 400."""
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(return_value={"client_id": "client123"})
+        mock_request.json = AsyncMock()
+        mock_request.query_params = {}
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_introspect(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+
+    @pytest.mark.asyncio
+    async def test_handle_introspect_basic_auth_header(self):
+        """Test token introspection authenticating via a Basic auth header."""
+        import base64
+
+        credentials = base64.b64encode(b"client123:secret123").decode("utf-8")
+
+        mock_request = AsyncMock()
+        mock_request.headers = {
+            "content-type": "application/x-www-form-urlencoded",
+            "authorization": f"Basic {credentials}",
+        }
+        mock_request.form = AsyncMock(return_value={"token": "token123"})
+        mock_request.json = AsyncMock()
+        mock_request.query_params = {}
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(return_value={"id": "client123"})
+
+        with patch(
+            "legifrance_mcp.src.oauth.controller.OAuth2Handler.introspect_token"
+        ) as mock_introspect:
+            mock_introspect.return_value = {"active": True}
+
+            result = await controller.handle_introspect(mock_request, oauth_service)
+
+        oauth_service.validate_client.assert_called_once_with("client123", "secret123")
+        assert result["active"] is True
+
+    @pytest.mark.asyncio
+    async def test_handle_introspect_malformed_basic_auth_header(self):
+        """Test token introspection with an undecodable Basic auth header."""
+        mock_request = AsyncMock()
+        mock_request.headers = {
+            "content-type": "application/x-www-form-urlencoded",
+            "authorization": "Basic not-valid-base64!!!",
+        }
+        mock_request.form = AsyncMock(return_value={"token": "token123"})
+        mock_request.json = AsyncMock()
+        mock_request.query_params = {}
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_introspect(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 401
+        assert _detail(exc_info.value)["error"] == "invalid_client"
+
+    @pytest.mark.asyncio
+    async def test_handle_introspect_missing_client_id(self):
+        """Test token introspection with no client_id anywhere raises 401."""
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(return_value={"token": "token123"})
+        mock_request.json = AsyncMock()
+        mock_request.query_params = {}
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_introspect(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 401
+        assert _detail(exc_info.value)["error"] == "invalid_client"
+
+    @pytest.mark.asyncio
+    async def test_handle_introspect_unexpected_error_returns_server_error(self):
+        """Test that an unexpected exception during introspection is a 500 server_error."""
+        mock_request = AsyncMock()
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.form = AsyncMock(
+            return_value={
+                "token": "token123",
+                "client_id": "client123",
+                "client_secret": "secret123",
+            }
+        )
+        mock_request.json = AsyncMock()
+        mock_request.query_params = {}
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_client = AsyncMock(
+            side_effect=RuntimeError("storage down")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_introspect(mock_request, oauth_service)
+
+        assert exc_info.value.status_code == 500
+        assert _detail(exc_info.value)["error"] == "server_error"
+
 
 class TestOAuthControllerIntegration:
     """Integration tests for OAuth controller."""
@@ -730,8 +1136,8 @@ class TestParseTokenRequest:
             await controller.parse_token_request(mock_request)
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_request"
-        assert "Invalid request format" in exc_info.value.detail["error_description"]
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+        assert "Invalid request format" in _detail(exc_info.value)["error_description"]
 
     @pytest.mark.asyncio
     async def test_parse_request_form_data_error(self):
@@ -744,8 +1150,8 @@ class TestParseTokenRequest:
             await controller.parse_token_request(mock_request)
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_request"
-        assert "Invalid request format" in exc_info.value.detail["error_description"]
+        assert _detail(exc_info.value)["error"] == "invalid_request"
+        assert "Invalid request format" in _detail(exc_info.value)["error_description"]
 
     @pytest.mark.asyncio
     async def test_parse_request_empty_json(self):
@@ -798,10 +1204,10 @@ class TestAuthorizationCodeGrantEdgeCases:
             )
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_grant"
+        assert _detail(exc_info.value)["error"] == "invalid_grant"
         assert (
             "Invalid or expired authorization code"
-            in exc_info.value.detail["error_description"]
+            in _detail(exc_info.value)["error_description"]
         )
         oauth_service.validate_authorization_code.assert_called_once_with(
             "invalid_code"
@@ -841,10 +1247,46 @@ class TestAuthorizationCodeGrantEdgeCases:
             )
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_client"
+        assert _detail(exc_info.value)["error"] == "invalid_client"
         assert (
-            "Invalid client credentials" in exc_info.value.detail["error_description"]
+            "Invalid client credentials" in _detail(exc_info.value)["error_description"]
         )
+
+    @patch("legifrance_mcp.src.oauth.controller.settings")
+    @pytest.mark.asyncio
+    async def test_missing_client_id(self, mock_settings):
+        """Test with client_id explicitly None and Cursor compatibility disabled."""
+        mock_settings.COMPATIBLE_WITH_CURSOR = False
+
+        from legifrance_mcp.src.oauth.models import (
+            AuthorizationCodeTokenRequest,
+        )
+
+        token_request = AuthorizationCodeTokenRequest(
+            grant_type="authorization_code",
+            code="valid_code",
+            client_id=None,
+            client_secret=None,
+            redirect_uri="http://localhost:3000/callback",
+            code_verifier="test_verifier",
+        )
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_authorization_code.return_value = {
+            "client_id": "test_client",
+            "redirect_uri": "http://localhost:3000/callback",
+            "code_challenge": "test_challenge",
+            "scope": "read",
+        }
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_authorization_code_grant(
+                token_request, oauth_service
+            )
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_client"
+        assert "Client ID is required" in _detail(exc_info.value)["error_description"]
 
     @pytest.mark.asyncio
     async def test_redirect_uri_mismatch(self):
@@ -877,8 +1319,8 @@ class TestAuthorizationCodeGrantEdgeCases:
             )
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_grant"
-        assert "Redirect URI mismatch" in exc_info.value.detail["error_description"]
+        assert _detail(exc_info.value)["error"] == "invalid_grant"
+        assert "Redirect URI mismatch" in _detail(exc_info.value)["error_description"]
 
     @patch("legifrance_mcp.src.oauth.controller.settings")
     @pytest.mark.asyncio
@@ -919,8 +1361,10 @@ class TestAuthorizationCodeGrantEdgeCases:
                 )
 
             assert exc_info.value.status_code == 400
-            assert exc_info.value.detail["error"] == "invalid_grant"
-            assert "Invalid code verifier" in exc_info.value.detail["error_description"]
+            assert _detail(exc_info.value)["error"] == "invalid_grant"
+            assert (
+                "Invalid code verifier" in _detail(exc_info.value)["error_description"]
+            )
             mock_verify.assert_called_once_with("wrong_verifier", "test_challenge")
 
     @pytest.mark.asyncio
@@ -1027,6 +1471,7 @@ class TestRefreshTokenGrantEdgeCases:
             refresh_token="invalid_refresh_token",
             client_id="test_client",
             client_secret="test_secret",
+            scope=None,
         )
 
         oauth_service = AsyncMock(spec=OAuthService)
@@ -1038,10 +1483,10 @@ class TestRefreshTokenGrantEdgeCases:
             )
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_grant"
+        assert _detail(exc_info.value)["error"] == "invalid_grant"
         assert (
             "Invalid or expired refresh token"
-            in exc_info.value.detail["error_description"]
+            in _detail(exc_info.value)["error_description"]
         )
         oauth_service.validate_refresh_token.assert_called_once_with(
             "invalid_refresh_token"
@@ -1060,6 +1505,7 @@ class TestRefreshTokenGrantEdgeCases:
             refresh_token="valid_refresh_token",
             client_id="invalid_client",
             client_secret="invalid_secret",
+            scope=None,
         )
 
         oauth_service = AsyncMock(spec=OAuthService)
@@ -1075,10 +1521,41 @@ class TestRefreshTokenGrantEdgeCases:
             )
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_client"
+        assert _detail(exc_info.value)["error"] == "invalid_client"
         assert (
-            "Invalid client credentials" in exc_info.value.detail["error_description"]
+            "Invalid client credentials" in _detail(exc_info.value)["error_description"]
         )
+
+    @patch("legifrance_mcp.src.oauth.controller.settings")
+    @pytest.mark.asyncio
+    async def test_missing_client_id_refresh(self, mock_settings):
+        """Test refresh token grant with client_id explicitly None."""
+        mock_settings.COMPATIBLE_WITH_CURSOR = False
+
+        from legifrance_mcp.src.oauth.models import RefreshTokenRequest
+
+        token_request = RefreshTokenRequest(
+            grant_type="refresh_token",
+            refresh_token="valid_refresh_token",
+            client_id=None,
+            client_secret=None,
+            scope=None,
+        )
+
+        oauth_service = AsyncMock(spec=OAuthService)
+        oauth_service.validate_refresh_token.return_value = {
+            "client_id": "test_client",
+            "scope": "read",
+        }
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_refresh_token_grant_pydantic(
+                token_request, oauth_service
+            )
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_client"
+        assert "Client ID is required" in _detail(exc_info.value)["error_description"]
 
     @pytest.mark.asyncio
     async def test_successful_refresh_with_snowflake_token(self):
@@ -1132,6 +1609,7 @@ class TestRefreshTokenGrantEdgeCases:
             refresh_token="valid_refresh_token",
             client_id="test_client",
             client_secret="test_secret",
+            scope=None,
         )
 
         oauth_service = AsyncMock(spec=OAuthService)
@@ -1203,6 +1681,7 @@ class TestClientCredentialsGrantEdgeCases:
             grant_type="client_credentials",
             client_id="invalid_client",
             client_secret="invalid_secret",
+            scope=None,
         )
 
         oauth_service = AsyncMock(spec=OAuthService)
@@ -1214,13 +1693,41 @@ class TestClientCredentialsGrantEdgeCases:
             )
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail["error"] == "invalid_client"
+        assert _detail(exc_info.value)["error"] == "invalid_client"
         assert (
-            "Invalid client credentials" in exc_info.value.detail["error_description"]
+            "Invalid client credentials" in _detail(exc_info.value)["error_description"]
         )
         oauth_service.validate_client.assert_called_once_with(
             "invalid_client", "invalid_secret"
         )
+
+    @patch("legifrance_mcp.src.oauth.controller.settings")
+    @pytest.mark.asyncio
+    async def test_missing_client_id(self, mock_settings):
+        """Test client credentials grant with client_id explicitly None."""
+        mock_settings.COMPATIBLE_WITH_CURSOR = False
+
+        from legifrance_mcp.src.oauth.models import (
+            ClientCredentialsTokenRequest,
+        )
+
+        token_request = ClientCredentialsTokenRequest(
+            grant_type="client_credentials",
+            client_id=None,
+            client_secret=None,
+            scope=None,
+        )
+
+        oauth_service = AsyncMock(spec=OAuthService)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await controller.handle_client_credentials_grant_pydantic(
+                token_request, oauth_service
+            )
+
+        assert exc_info.value.status_code == 400
+        assert _detail(exc_info.value)["error"] == "invalid_client"
+        assert "Client ID is required" in _detail(exc_info.value)["error_description"]
 
     @pytest.mark.asyncio
     async def test_successful_client_credentials_grant(self):
@@ -1259,6 +1766,7 @@ class TestClientCredentialsGrantEdgeCases:
             grant_type="client_credentials",
             client_id="test_client",
             client_secret="test_secret",
+            scope=None,
         )
 
         oauth_service = AsyncMock(spec=OAuthService)

@@ -31,7 +31,11 @@ oauth_service_instance: Optional[OAuthService] = None
 _local_development_token: Optional[str] = None
 
 # Choose the appropriate transport protocol based on settings
-if settings.MCP_TRANSPORT_PROTOCOL == "sse":
+if settings.MCP_TRANSPORT_PROTOCOL == "sse":  # pragma: no cover
+    # Only reachable by importing this module with MCP_TRANSPORT_PROTOCOL=sse
+    # already set; safely exercising that would need a subprocess-level
+    # re-import (see test_stdio_protocol_purity.py's approach), which is
+    # disproportionate for this one branch of a dormant transport option.
     from fastmcp.server.http import create_sse_app
 
     mcp_app = create_sse_app(server.mcp, message_path="/sse/message", sse_path="/sse")
@@ -218,7 +222,11 @@ class LocalDevelopmentAuthorizationMiddleware(BaseHTTPMiddleware):
 
 
 if settings.USE_EXTERNAL_BROWSER_AUTH and settings.ENABLE_AUTH:
-    app.add_middleware(LocalDevelopmentAuthorizationMiddleware)
+    app.add_middleware(LocalDevelopmentAuthorizationMiddleware)  # pragma: no cover
+    # Only reachable by importing this module with both settings already
+    # set; see the MCP_TRANSPORT_PROTOCOL pragma above for why a safe
+    # reimport-based test is disproportionate here. The middleware's own
+    # dispatch() logic is fully unit-tested directly in test_api.py.
 else:
     app.add_middleware(AuthorizationMiddleware)
 
@@ -371,7 +379,9 @@ register_oauth_routes(app, get_oauth_service_provider)
 
 app.mount("/", mcp_app)
 
-if settings.CORS_ENABLED:
+if settings.CORS_ENABLED:  # pragma: no cover
+    # Only reachable by importing this module with CORS_ENABLED already
+    # set; same import-time-branch rationale as the pragmas above.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,

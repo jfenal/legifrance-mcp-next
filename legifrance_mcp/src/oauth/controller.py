@@ -35,7 +35,10 @@ logger = get_python_logger(settings.PYTHON_LOG_LEVEL)
 # the runtime check below since USE_EXTERNAL_BROWSER_AUTH is read once at
 # process startup. Declared here so it's never "possibly unbound".
 api_module: Any = None
-if settings.USE_EXTERNAL_BROWSER_AUTH:
+if settings.USE_EXTERNAL_BROWSER_AUTH:  # pragma: no cover
+    # Only reachable by importing this module with USE_EXTERNAL_BROWSER_AUTH
+    # already set; see api.py's MCP_TRANSPORT_PROTOCOL pragma for why a safe
+    # reimport-based test is disproportionate here.
     import legifrance_mcp.src.api as api_module
 
 

@@ -102,17 +102,6 @@ strict_equality = true
 
 [tool.basedpyright]
 include = ["legifrance_mcp", "tests"]
-# Pre-existing template OAuth/storage test files have ~60 mock-typing
-# gaps (Optional subscripting, etc.) unrelated to this project's actual
-# Légifrance/Judilibre tools; that subsystem is dormant (ENABLE_AUTH=False
-# by default) and not something we're actively authoring. Tracked as a
-# follow-up rather than fixed wholesale here; still covered by mypy.
-exclude = [
-    "tests/test_oauth_controller.py",
-    "tests/test_oauth_handler.py",
-    "tests/test_oauth_service.py",
-    "tests/test_storage_service.py",
-]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 reportMissingImports = true
@@ -136,14 +125,6 @@ omit = [
     "*/test_*",
     "*/__pycache__/*",
     "*/migrations/*",
-    # Pre-existing template OAuth/storage/API-wiring code for a subsystem
-    # that's dormant by default (ENABLE_AUTH=False) and not something this
-    # project is actively authoring -- same rationale as the basedpyright
-    # exclusion above. The actual Légifrance/Judilibre tools and their
-    # supporting code are all covered and held to the 90% floor.
-    "legifrance_mcp/src/api.py",
-    "legifrance_mcp/src/oauth/*",
-    "legifrance_mcp/src/storage/*",
 ]
 
 [tool.coverage.report]

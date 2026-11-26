@@ -188,6 +188,7 @@ class TestOAuth2Handler:
         result = OAuth2Handler.verify_access_token("token123")
 
         mock_introspect.assert_called_once_with("token123")
+        assert result is not None
         assert result["active"] is True
         assert result["sub"] == "user123"
 
@@ -238,6 +239,7 @@ class TestOAuth2Handler:
 
         result = OAuth2Handler.verify_access_token("token123")
 
+        assert result is not None
         assert result["active"] is True
         assert result["sub"] == "user123"
 
@@ -249,6 +251,7 @@ class TestOAuth2Handler:
         result = OAuth2Handler.verify_authorization_header("Bearer token123")
 
         mock_verify.assert_called_once_with("token123")
+        assert result is not None
         assert result["active"] is True
 
     def test_verify_authorization_header_invalid_format(self):
@@ -314,4 +317,5 @@ class TestOAuth2HandlerIntegration:
 
         # Test token verification
         verification = OAuth2Handler.verify_access_token("token123")
+        assert verification is not None
         assert verification["active"] is True
