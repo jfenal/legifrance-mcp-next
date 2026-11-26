@@ -85,17 +85,17 @@ class Settings(BaseSettings):
             "enum": ["streamable-http", "sse", "http", "stdio"],
         },
     )
-    LEGIFRANCE_CLIENT_ID: Optional[str] = Field(
+    LEGIFRANCE_OAUTH_ID: Optional[str] = Field(
         default=None,
         json_schema_extra={
-            "env": "LEGIFRANCE_CLIENT_ID",
+            "env": "LEGIFRANCE_OAUTH_ID",
             "description": "PISTE OAuth2 client ID for the Légifrance/Judilibre APIs",
         },
     )
-    LEGIFRANCE_CLIENT_SECRET: Optional[str] = Field(
+    LEGIFRANCE_OAUTH_SECRET: Optional[str] = Field(
         default=None,
         json_schema_extra={
-            "env": "LEGIFRANCE_CLIENT_SECRET",
+            "env": "LEGIFRANCE_OAUTH_SECRET",
             "description": "PISTE OAuth2 client secret for the Légifrance/Judilibre APIs",
         },
     )

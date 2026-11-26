@@ -60,16 +60,16 @@ spec:
                 configMapKeyRef:
                   name: legifrance-mcp-config
                   key: PISTE_ENV
-            - name: LEGIFRANCE_CLIENT_ID
+            - name: LEGIFRANCE_OAUTH_ID
               valueFrom:
                 secretKeyRef:
                   name: legifrance-mcp-secrets
-                  key: LEGIFRANCE_CLIENT_ID
-            - name: LEGIFRANCE_CLIENT_SECRET
+                  key: LEGIFRANCE_OAUTH_ID
+            - name: LEGIFRANCE_OAUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: legifrance-mcp-secrets
-                  key: LEGIFRANCE_CLIENT_SECRET
+                  key: LEGIFRANCE_OAUTH_SECRET
             - name: JUDILIBRE_API_KEY
               valueFrom:
                 secretKeyRef:

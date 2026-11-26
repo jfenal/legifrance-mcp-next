@@ -30,9 +30,9 @@ _JUDILIBRE_URLS = {"sandbox": JUDILIBRE_SANDBOX_URL, "production": JUDILIBRE_PRO
 
 
 def _api_config() -> ApiConfig:
-    if not settings.LEGIFRANCE_CLIENT_ID or not settings.LEGIFRANCE_CLIENT_SECRET:
+    if not settings.LEGIFRANCE_OAUTH_ID or not settings.LEGIFRANCE_OAUTH_SECRET:
         raise ValueError(
-            "LEGIFRANCE_CLIENT_ID et LEGIFRANCE_CLIENT_SECRET doivent être définis"
+            "LEGIFRANCE_OAUTH_ID et LEGIFRANCE_OAUTH_SECRET doivent être définis"
         )
     token_url, api_url = (
         (SANDBOX_TOKEN_URL, SANDBOX_API_URL)
@@ -40,8 +40,8 @@ def _api_config() -> ApiConfig:
         else (PROD_TOKEN_URL, PROD_API_URL)
     )
     return ApiConfig(
-        client_id=settings.LEGIFRANCE_CLIENT_ID,
-        client_secret=settings.LEGIFRANCE_CLIENT_SECRET,
+        client_id=settings.LEGIFRANCE_OAUTH_ID,
+        client_secret=settings.LEGIFRANCE_OAUTH_SECRET,
         token_url=token_url,
         api_url=api_url,
     )
@@ -64,7 +64,7 @@ def get_judilibre_client() -> JudilibreClient:
     """Construit le client Judilibre authentifié via PISTE.
 
     Mis en cache une seule fois par process. Réutilise les identifiants
-    PISTE de LEGIFRANCE_CLIENT_ID/SECRET, et dérive l'URL Judilibre
+    PISTE de LEGIFRANCE_OAUTH_ID/SECRET, et dérive l'URL Judilibre
     sandbox/production du même PISTE_ENV que le client Légifrance plutôt
     que de rester figée en sandbox.
     """

@@ -34,10 +34,8 @@ def piste_credentials(monkeypatch):
     importlib.reload(settings_mod) can rebind to a disconnected instance)."""
     from legifrance_mcp.src import legifrance_client
 
-    monkeypatch.setattr(legifrance_client.settings, "LEGIFRANCE_CLIENT_ID", "id")
-    monkeypatch.setattr(
-        legifrance_client.settings, "LEGIFRANCE_CLIENT_SECRET", "secret"
-    )
+    monkeypatch.setattr(legifrance_client.settings, "LEGIFRANCE_OAUTH_ID", "id")
+    monkeypatch.setattr(legifrance_client.settings, "LEGIFRANCE_OAUTH_SECRET", "secret")
 
 
 class TestRechercherCode:
