@@ -28,9 +28,7 @@ class FastMCPClient:
         self.health_endpoint = f"{server_url}/health"
 
         # MCP configuration
-        self.config = {
-            "mcpServers": {"legifrance_mcp": {"url": f"{server_url}/mcp"}}
-        }
+        self.config = {"mcpServers": {"legifrance_mcp": {"url": f"{server_url}/mcp"}}}
 
     def check_server_health(self):
         """Check if the MCP server is healthy."""

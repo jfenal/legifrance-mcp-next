@@ -22,7 +22,7 @@
 - [ ] I have added tests that prove my fix is effective or my feature works
 - [ ] All new and existing tests pass (`make test`)
 - [ ] Pre-commit hooks pass (`make pre-commit`)
-- [ ] Code coverage remains >= 80% (`make coverage`)
+- [ ] Code coverage remains >= 90% (`make coverage`)
 - [ ] I have updated documentation where necessary
 - [ ] I have updated `CHANGELOG.md` (if applicable)
 - [ ] My PR title follows [Conventional Commits](https://www.conventionalcommits.org/) format

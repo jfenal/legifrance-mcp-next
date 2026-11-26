@@ -1,7 +1,8 @@
 """Legifrance MCP Server implementation.
 
 This module contains the main Legifrance MCP Server class that provides
-tools for MCP clients. It uses FastMCP to register and manage MCP capabilities.
+tools for querying French legal databases (Légifrance, Judilibre) for MCP
+clients. It uses FastMCP to register and manage MCP capabilities.
 """
 
 from fastmcp import FastMCP
@@ -9,14 +10,16 @@ from fastmcp import FastMCP
 from legifrance_mcp.src.settings import settings
 
 # Import tools from the tools package
-from legifrance_mcp.src.tools.code_review_tool import (
-    generate_code_review_prompt,
+from legifrance_mcp.src.tools.get_text_history_tool import get_text_history
+from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
+from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
+    rechercher_jurisprudence_judilibre,
 )
-from legifrance_mcp.src.tools.multiply_tool import (
-    multiply_numbers,
+from legifrance_mcp.src.tools.rechercher_jurisprudence_tool import (
+    rechercher_jurisprudence_judiciaire,
 )
-from legifrance_mcp.src.tools.redhat_logo_tool import (
-    get_redhat_logo,
+from legifrance_mcp.src.tools.rechercher_texte_legal_tool import (
+    rechercher_dans_texte_legal,
 )
 from legifrance_mcp.utils.pylogger import (
     force_reconfigure_all_loggers,
@@ -34,10 +37,10 @@ class LegifranceMCPServer:
     """
 
     def __init__(self):
-        """Initialize the MCP server with template tools following tools-first architecture."""
+        """Initialize the MCP server with the Légifrance/Judilibre search tools."""
         try:
             # Initialize FastMCP server
-            self.mcp = FastMCP("template")
+            self.mcp = FastMCP("legifrance")
 
             # Force reconfigure all loggers after FastMCP initialization to ensure structured logging
             force_reconfigure_all_loggers(settings.PYTHON_LOG_LEVEL)
@@ -51,16 +54,19 @@ class LegifranceMCPServer:
             raise
 
     def _register_mcp_tools(self) -> None:
-        """Register MCP tools for template operations (tools-first architecture).
+        """Register MCP tools for Légifrance/Judilibre operations (tools-first architecture).
 
         Registers all available tools with the FastMCP server instance.
         In tools-first architecture, the server only provides tools.
         Currently includes:
-        - multiply_numbers: Basic arithmetic operations
-        - generate_code_review_prompt: Code review prompt generation
-        - get_redhat_logo: Red Hat logo retrieval as base64
+        - rechercher_code: Recherche dans les codes juridiques
+        - rechercher_dans_texte_legal: Recherche dans les textes légaux
+        - rechercher_jurisprudence_judiciaire: Recherche de jurisprudence (JURI)
+        - rechercher_jurisprudence_judilibre: Recherche de jurisprudence (Judilibre)
+        - get_text_history: Historique des modifications d'un texte légal
         """
-        # Register all the imported tools
-        self.mcp.tool()(multiply_numbers)
-        self.mcp.tool()(generate_code_review_prompt)
-        self.mcp.tool()(get_redhat_logo)
+        self.mcp.tool()(rechercher_code)
+        self.mcp.tool()(rechercher_dans_texte_legal)
+        self.mcp.tool()(rechercher_jurisprudence_judiciaire)
+        self.mcp.tool()(rechercher_jurisprudence_judilibre)
+        self.mcp.tool()(get_text_history)

@@ -59,12 +59,12 @@ format: ## Auto-fix lint issues and format code
 	.venv/bin/ruff check . --fix
 	.venv/bin/ruff format .
 
-coverage: ## Run tests with coverage report (80% minimum)
+coverage: ## Run tests with coverage report (90% minimum)
 	@if [ ! -d ".venv" ]; then \
 		echo "Error: Virtual environment not found. Run 'make install' first."; \
 		exit 1; \
 	fi
-	.venv/bin/python -m pytest --cov=legifrance_mcp --cov-report=term-missing --cov-report=html --cov-fail-under=80
+	.venv/bin/python -m pytest --cov=legifrance_mcp --cov-report=term-missing --cov-report=html --cov-fail-under=90
 
 pre-commit: ## Run all pre-commit hooks
 	@if [ ! -d ".venv" ]; then \

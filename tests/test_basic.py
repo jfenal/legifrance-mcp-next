@@ -219,9 +219,12 @@ class TestIntegration:
             "legifrance_mcp.src.mcp",
             "legifrance_mcp.src.settings",
             "legifrance_mcp.src.main",
-            "legifrance_mcp.src.tools.multiply_tool",
-            "legifrance_mcp.src.resources.redhat_logo",
-            "legifrance_mcp.src.prompts.code_review_prompt",
+            "legifrance_mcp.src.tools.rechercher_code_tool",
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool",
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool",
+            "legifrance_mcp.src.tools.rechercher_judilibre_tool",
+            "legifrance_mcp.src.tools.get_text_history_tool",
+            "legifrance_mcp.src.legifrance_client",
             "legifrance_mcp.utils.pylogger",
         ]
 

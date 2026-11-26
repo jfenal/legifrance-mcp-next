@@ -201,6 +201,24 @@ class TestMain:
     @patch("legifrance_mcp.src.main.validate_config")
     @patch("legifrance_mcp.src.main.logger")
     @patch("legifrance_mcp.src.main.uvicorn")
+    @patch("legifrance_mcp.src.main.server")
+    def test_main_stdio_transport_runs_fastmcp_directly(
+        self, mock_server, mock_uvicorn, mock_logger, mock_validate
+    ):
+        """stdio must never reach uvicorn.run() -- it's a different, local-
+        process transport entirely (Claude Desktop and friends)."""
+        mock_settings = Mock()
+        mock_settings.MCP_TRANSPORT_PROTOCOL = "stdio"
+
+        with patch("legifrance_mcp.src.main.settings", mock_settings):
+            main()
+
+        mock_server.mcp.run.assert_called_once_with(transport="stdio")
+        mock_uvicorn.run.assert_not_called()
+
+    @patch("legifrance_mcp.src.main.validate_config")
+    @patch("legifrance_mcp.src.main.logger")
+    @patch("legifrance_mcp.src.main.uvicorn")
     def test_main_with_ssl(self, mock_uvicorn, mock_logger, mock_validate):
         """Test main execution with SSL configuration."""
         # Arrange

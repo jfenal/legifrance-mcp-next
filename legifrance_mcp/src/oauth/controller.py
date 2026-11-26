@@ -30,6 +30,11 @@ from .service import OAuthService, verify_code_challenge
 
 logger = get_python_logger(settings.PYTHON_LOG_LEVEL)
 
+# Imported lazily and conditionally to avoid a circular import
+# (api.py -> oauth/routes.py -> this module); guaranteed consistent with
+# the runtime check below since USE_EXTERNAL_BROWSER_AUTH is read once at
+# process startup. Declared here so it's never "possibly unbound".
+api_module: Any = None
 if settings.USE_EXTERNAL_BROWSER_AUTH:
     import legifrance_mcp.src.api as api_module
 
@@ -56,7 +61,7 @@ async def handle_callback(request: Request, oauth_service: OAuthService) -> Resp
 
     if settings.USE_EXTERNAL_BROWSER_AUTH:
         access_token = token_set_from_code.get("access_token")
-        if access_token:
+        if access_token and api_module is not None:
             api_module._local_development_token = access_token
             logger.info("Local development token stored successfully")
 
@@ -541,6 +546,7 @@ async def handle_introspect(
                 form_dict = dict(request.query_params)
 
         token = form_dict.get("token")
+        token = token if isinstance(token, str) else None
 
         if not token:
             raise HTTPException(
@@ -569,8 +575,23 @@ async def handle_introspect(
                     },
                 )
         else:
-            client_id = form_dict.get("client_id")
-            client_secret = form_dict.get("client_secret")
+            raw_client_id = form_dict.get("client_id")
+            raw_client_secret = form_dict.get("client_secret")
+            # A multipart form field can technically carry an uploaded file
+            # instead of plain text; neither is ever a valid credential.
+            client_id = raw_client_id if isinstance(raw_client_id, str) else None
+            client_secret = (
+                raw_client_secret if isinstance(raw_client_secret, str) else None
+            )
+
+        if client_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error": "invalid_client",
+                    "error_description": "Invalid client credentials",
+                },
+            )
 
         client = await oauth_service.validate_client(client_id, client_secret)
         if not client:

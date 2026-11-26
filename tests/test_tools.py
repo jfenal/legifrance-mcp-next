@@ -1,366 +1,474 @@
-"""Tests for all MCP tools."""
+"""Tests for the Légifrance/Judilibre search tools.
 
-import asyncio
-from unittest.mock import Mock, mock_open, patch
+Ported from the standalone legifrance-mcp project (jfenal/legifrance-mcp),
+adapted to this template's dict-return tool convention.
+"""
+
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from legifrance_mcp.src.tools.code_review_tool import generate_code_review_prompt
-from legifrance_mcp.src.tools.multiply_tool import multiply_numbers
-from legifrance_mcp.src.tools.redhat_logo_tool import get_redhat_logo
+from legifrance_mcp.src.tools.get_text_history_tool import (
+    _resolve_loda_text,
+    get_text_history,
+)
+from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
+from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
+    rechercher_jurisprudence_judilibre,
+)
+from legifrance_mcp.src.tools.rechercher_jurisprudence_tool import (
+    rechercher_jurisprudence_judiciaire,
+)
+from legifrance_mcp.src.tools.rechercher_texte_legal_tool import (
+    rechercher_dans_texte_legal,
+)
 
 
-class TestMultiplyTool:
-    """Test the multiply_numbers tool."""
+@pytest.fixture(autouse=True)
+def piste_credentials(monkeypatch):
+    """Settings is a singleton read at import time, so monkeypatch.setenv()
+    alone wouldn't reach it -- patch the attribute on the specific object
+    legifrance_client holds a reference to (not "the current
+    legifrance_mcp.src.settings.settings", which test_basic.py's
+    importlib.reload(settings_mod) can rebind to a disconnected instance)."""
+    from legifrance_mcp.src import legifrance_client
 
-    def test_multiply_numbers_success(self):
-        """Test successful multiplication of two numbers."""
-        # Arrange
-        a, b = 5.0, 3.0
+    monkeypatch.setattr(legifrance_client.settings, "LEGIFRANCE_CLIENT_ID", "id")
+    monkeypatch.setattr(
+        legifrance_client.settings, "LEGIFRANCE_CLIENT_SECRET", "secret"
+    )
 
-        # Act
-        result = multiply_numbers(a, b)
 
-        # Assert
-        assert result["status"] == "success"
-        assert result["operation"] == "multiplication"
-        assert result["a"] == 5.0
-        assert result["b"] == 3.0
-        assert result["result"] == 15.0
-        assert result["message"] == "Successfully multiplied 5.0 and 3.0"
-
-    def test_multiply_numbers_integers(self):
-        """Test multiplication with integer inputs."""
-        # Arrange
-        a, b = 10, 7
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "success"
-        assert result["result"] == 70
-        assert result["a"] == 10
-        assert result["b"] == 7
-
-    def test_multiply_numbers_negative_values(self):
-        """Test multiplication with negative values."""
-        # Arrange
-        a, b = -5.0, 3.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "success"
-        assert result["result"] == -15.0
-
-    def test_multiply_numbers_zero(self):
-        """Test multiplication with zero."""
-        # Arrange
-        a, b = 10.0, 0.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "success"
-        assert result["result"] == 0.0
-
-    def test_multiply_numbers_float_precision(self):
-        """Test multiplication with floating point precision."""
-        # Arrange
-        a, b = 0.1, 0.2
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "success"
-        assert result["result"] == pytest.approx(0.02, rel=1e-10)
-
-    def test_multiply_numbers_invalid_input_string(self):
-        """Test multiplication with invalid string input."""
-        # Arrange
-        a, b = "5", 3.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
+class TestRechercherCode:
+    async def test_unknown_code_name_returns_clear_error(self):
+        result = await rechercher_code(search="contrat", code_name="Pas un code")
         assert result["status"] == "error"
-        assert "error" in result
-        assert "Failed to perform multiplication" in result["message"]
+        assert "Pas un code" in result["error"]
 
-    def test_multiply_numbers_invalid_input_none(self):
-        """Test multiplication with None input."""
-        # Arrange
-        a, b = None, 3.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "error"
-        assert "error" in result
-        assert "Failed to perform multiplication" in result["message"]
-
-    def test_multiply_numbers_invalid_input_list(self):
-        """Test multiplication with list input."""
-        # Arrange
-        a, b = [1, 2], 3.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "error"
-        assert "error" in result
-        assert "Failed to perform multiplication" in result["message"]
-
-    def test_multiply_numbers_both_invalid_inputs(self):
-        """Test multiplication with both inputs invalid."""
-        # Arrange
-        a, b = "invalid", "also_invalid"
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert result["status"] == "error"
-        assert "error" in result
-        assert "Failed to perform multiplication" in result["message"]
-
-    @patch("legifrance_mcp.src.tools.multiply_tool.logger")
-    def test_multiply_numbers_logging_success(self, mock_logger):
-        """Test that successful multiplication is logged."""
-        # Arrange
-        a, b = 5.0, 3.0
-
-        # Act
-        multiply_numbers(a, b)
-
-        # Assert
-        mock_logger.info.assert_called_with("Multiply tool called: 5.0 * 3.0 = 15.0")
-
-    @patch("legifrance_mcp.src.tools.multiply_tool.logger")
-    def test_multiply_numbers_logging_error(self, mock_logger):
-        """Test that errors are logged."""
-        # Arrange
-        a, b = "invalid", 3.0
-
-        # Act
-        multiply_numbers(a, b)
-
-        # Assert
-        mock_logger.error.assert_called()
-
-    def test_multiply_numbers_return_type(self):
-        """Test that the function returns a dictionary."""
-        # Arrange
-        a, b = 5.0, 3.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert isinstance(result, dict)
-        assert "status" in result
-        assert "operation" in result
-        assert "a" in result
-        assert "b" in result
-        assert "result" in result
-        assert "message" in result
-
-    def test_multiply_numbers_error_return_structure(self):
-        """Test that error responses have the correct structure."""
-        # Arrange
-        a, b = "invalid", 3.0
-
-        # Act
-        result = multiply_numbers(a, b)
-
-        # Assert
-        assert isinstance(result, dict)
-        assert result["status"] == "error"
-        assert "error" in result
-        assert "message" in result
-        assert "Failed to perform multiplication" in result["message"]
-
-    def test_multiply_numbers_commutative_property(self):
-        """Test that multiplication is commutative."""
-        # Arrange
-        a, b = 5.0, 3.0
-
-        # Act
-        result1 = multiply_numbers(a, b)
-        result2 = multiply_numbers(b, a)
-
-        # Assert
-        assert result1["result"] == result2["result"]
-        assert result1["status"] == "success"
-        assert result2["status"] == "success"
-
-
-class TestCodeReviewTool:
-    """Test the code review tool functionality."""
-
-    def test_generate_code_review_prompt_basic(self):
-        """Test basic code review prompt generation."""
-        # Arrange
-        code = "def add(a, b): return a + b"
-        language = "python"
-
-        # Act
-        result = asyncio.run(generate_code_review_prompt(code, language))
-
-        # Assert
-        assert isinstance(result, dict)
+    async def test_no_results_returns_explicit_message(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            (
+                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.text.return_value.execute.return_value
+            ) = []
+            result = await rechercher_code(search="zzzzz", code_name="Code civil")
         assert result["status"] == "success"
-        assert result["operation"] == "code_review_prompt"
-        assert result["language"] == language
-        assert code in result["prompt"]
-        assert language in result["prompt"]
+        assert result["result"] == "Aucun résultat."
 
-    def test_generate_code_review_prompt_default_language(self):
-        """Test code review prompt with default language."""
-        # Arrange
-        code = "function add(a, b) { return a + b; }"
-
-        # Act
-        result = asyncio.run(generate_code_review_prompt(code))
-
-        # Assert
-        assert isinstance(result, dict)
+    async def test_returns_formatted_articles_on_success(self):
+        article = MagicMock(
+            code_name="Code civil",
+            number="1240",
+            title="De la responsabilité",
+            legal_status="VIGUEUR",
+            url="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006438834",
+            content="Tout fait quelconque de l'homme...",
+            version_date=datetime(2020, 1, 1),
+        )
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            (
+                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.text.return_value.execute.return_value
+            ) = [article]
+            result = await rechercher_code(
+                search="responsabilité", code_name="Code civil", champ="ARTICLE"
+            )
         assert result["status"] == "success"
-        assert result["language"] == "python"  # Default language
-        assert code in result["prompt"]
+        assert "1240" in result["result"]
+        assert "01/01/2020" in result["result"]
 
-    def test_generate_code_review_prompt_empty_code(self):
-        """Test code review prompt with empty code."""
-        # Arrange
-        code = ""
-        language = "python"
-
-        # Act
-        result = asyncio.run(generate_code_review_prompt(code, language))
-
-        # Assert
-        assert isinstance(result, dict)
-        assert result["status"] == "error"
-        assert "Code must be a non-empty string" in result["error"]
-
-    def test_generate_code_review_prompt_invalid_language(self):
-        """Test code review prompt with invalid language."""
-        # Arrange
-        code = "def test(): pass"
-        language = ""
-
-        # Act
-        result = asyncio.run(generate_code_review_prompt(code, language))
-
-        # Assert
-        assert isinstance(result, dict)
-        assert result["status"] == "error"
-        assert "Language must be a non-empty string" in result["error"]
-
-    def test_generate_code_review_prompt_content_structure(self):
-        """Test that the prompt content has the expected structure."""
-        # Arrange
-        code = "def test_function(): pass"
-        language = "python"
-
-        # Act
-        result = asyncio.run(generate_code_review_prompt(code, language))
-        content = result["prompt"]
-
-        # Assert
+    async def test_resolve_code_name_is_accent_tolerant(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            (
+                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.text.return_value.execute.return_value
+            ) = []
+            result = await rechercher_code(search="x", code_name="Code penal")
         assert result["status"] == "success"
-        assert "Please review the following" in content
-        assert f"```{language}" in content
-        assert code in content
-        assert "Focus on:" in content
-        assert "Code quality and readability" in content
-        assert "Potential bugs or issues" in content
-        assert "Best practices" in content
-        assert "Performance considerations" in content
 
+    async def test_proximite_is_forwarded_to_text_builder(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder.text.return_value.execute.return_value = []
+            await rechercher_code(
+                search="bail commercial", code_name="Code civil", proximite=3
+            )
+        assert builder.text.call_args.kwargs["proximity"] == 3
 
-class TestRedHatLogoTool:
-    """Test the Red Hat logo tool functionality."""
+    async def test_num_article_champ_uses_article_number_builder(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder.article_number.return_value.execute.return_value = []
+            await rechercher_code(
+                search="1240", code_name="Code civil", champ="NUM_ARTICLE"
+            )
+        builder.article_number.assert_called_once_with("1240")
 
-    @patch("builtins.open", new_callable=mock_open, read_data=b"fake_png_data")
-    @patch("legifrance_mcp.src.tools.redhat_logo_tool.Path")
-    def test_get_redhat_logo_success(self, mock_path, mock_file):
-        """Test successful reading of Red Hat logo."""
-        # Arrange
-        mock_path_instance = Mock()
-        mock_path_instance.parent = Mock()
-        mock_path_instance.parent.parent = Mock()  # Go up from tools to src
-        assets_dir = Mock()
-        assets_dir.__truediv__ = Mock(return_value=Mock())
-        mock_path_instance.parent.parent.__truediv__ = Mock(return_value=assets_dir)
-        mock_path.return_value = mock_path_instance
+    async def test_fetch_all_uses_max_page_size(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder.text.return_value.execute.return_value = []
+            await rechercher_code(search="x", code_name="Code civil", fetch_all=True)
+        builder.text.return_value.paginate.assert_called_once_with(page_size=20)
 
-        # Act
-        result = asyncio.run(get_redhat_logo())
-
-        # Assert
-        assert result["status"] == "success"
-        assert result["operation"] == "get_redhat_logo"
-        assert result["name"] == "Red Hat Logo"
-        assert result["description"] == "Red Hat logo as base64 encoded PNG"
-        assert result["mimeType"] == "image/png"
-        assert isinstance(result["data"], str)
-        assert len(result["data"]) > 0
-        assert result["size_bytes"] == 13  # Length of b"fake_png_data"
-
-    @patch("legifrance_mcp.src.tools.redhat_logo_tool.Path")
-    def test_get_redhat_logo_file_not_found(self, mock_path):
-        """Test handling when logo file is not found."""
-        # Arrange
-        mock_path_instance = Mock()
-        mock_path_instance.parent = Mock()
-        mock_path_instance.parent.parent = Mock()
-        assets_dir = Mock()
-        logo_path = Mock()
-        logo_path.__str__ = Mock(return_value="/path/to/logo.png")
-        assets_dir.__truediv__ = Mock(return_value=logo_path)
-        mock_path_instance.parent.parent.__truediv__ = Mock(return_value=assets_dir)
-        mock_path.return_value = mock_path_instance
-
-        # Configure open to raise FileNotFoundError
-        with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
-            # Act
-            result = asyncio.run(get_redhat_logo())
-
-        # Assert
+    async def test_unexpected_exception_returns_error_dict(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await rechercher_code(search="x", code_name="Code civil")
         assert result["status"] == "error"
-        assert result["operation"] == "get_redhat_logo"
-        assert result["error"] == "file_not_found"
-        assert "Could not find logo file" in result["message"]
+        assert "boom" in result["error"]
 
-    @patch("legifrance_mcp.src.tools.redhat_logo_tool.Path")
-    def test_get_redhat_logo_permission_error(self, mock_path):
-        """Test handling when logo file has permission issues."""
-        # Arrange
-        mock_path_instance = Mock()
-        mock_path_instance.parent = Mock()
-        mock_path_instance.parent.parent = Mock()
-        assets_dir = Mock()
-        logo_path = Mock()
-        logo_path.__str__ = Mock(return_value="/path/to/logo.png")
-        assets_dir.__truediv__ = Mock(return_value=logo_path)
-        mock_path_instance.parent.parent.__truediv__ = Mock(return_value=assets_dir)
-        mock_path.return_value = mock_path_instance
 
-        # Configure open to raise PermissionError
-        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
-            # Act
-            result = asyncio.run(get_redhat_logo())
+class TestRechercherTexteLegal:
+    async def test_no_results_returns_explicit_message(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.search.return_value = []
+            result = await rechercher_dans_texte_legal(search="zzzzz")
+        assert result["result"] == "Aucun résultat."
 
-        # Assert
+    async def test_returns_formatted_texts_on_success(self):
+        texte = MagicMock()
+        texte.to_markdown.return_value = "## Loi 78-17\n\ncontenu"
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.search.return_value = [texte]
+            result = await rechercher_dans_texte_legal(
+                search="informatique", type_recherche="EXPRESSION_EXACTE", page_size=500
+            )
+        assert "Loi 78-17" in result["result"]
+
+    async def test_normalizes_type_recherche_before_building_query(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.search.return_value = []
+            await rechercher_dans_texte_legal(
+                search="x", type_recherche="EXPRESSION_EXACTE"
+            )
+
+        query = mock_loda_cls.return_value.search.call_args.args[0]
+        assert query.type_recherche.value == "EXACTE"
+
+    async def test_proximite_is_forwarded_as_proximity(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.search.return_value = []
+            await rechercher_dans_texte_legal(search="dommages intérêts", proximite=3)
+
+        query = mock_loda_cls.return_value.search.call_args.args[0]
+        assert query.proximity == 3
+
+    async def test_unexpected_exception_returns_error_dict(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool.Loda",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await rechercher_dans_texte_legal(search="x")
         assert result["status"] == "error"
-        assert result["operation"] == "get_redhat_logo"
-        assert result["error"] == "permission_denied"
-        assert "Permission denied reading logo file" in result["message"]
+        assert "boom" in result["error"]
+
+    async def test_text_id_and_champ_are_forwarded(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_texte_legal_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.search.return_value = []
+            await rechercher_dans_texte_legal(
+                text_id="78-17", search="7", champ="NUM_ARTICLE"
+            )
+
+        query = mock_loda_cls.return_value.search.call_args.args[0]
+        assert query.text_id == "78-17"
+        assert query.champ.value == "NUM_ARTICLE"
+
+
+class TestRechercherJurisprudenceJudiciaire:
+    async def test_no_results_returns_explicit_message(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            result = await rechercher_jurisprudence_judiciaire(search="zzzzz")
+        assert result["result"] == "Aucun résultat."
+
+    async def test_returns_formatted_decisions_on_success(self):
+        decision = MagicMock()
+        decision.to_markdown.return_value = "## Cour de cassation\n\nRésumé"
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = [decision]
+            result = await rechercher_jurisprudence_judiciaire(
+                search="licenciement",
+                type_recherche="AU_MOINS_UN_MOT",
+                page_size=500,
+                champ="ALL",
+                sort="DATE_DESC",
+                publication_bulletin=["T"],
+                fetch_all=True,
+                juri_keys=["titre"],
+                juridiction_judiciaire=["Cour de cassation"],
+            )
+        assert "Cour de cassation" in result["result"]
+
+    async def test_fetch_all_uses_max_page_size(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_judiciaire(search="x", fetch_all=True)
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.page_size == 20
+
+    async def test_proximite_is_forwarded_as_proximity(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_judiciaire(
+                search="dommages intérêts", proximite=3
+            )
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.proximity == 3
+
+    async def test_unexpected_exception_returns_error_dict(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool.JuriAPI",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await rechercher_jurisprudence_judiciaire(search="x")
+        assert result["status"] == "error"
+        assert "boom" in result["error"]
+
+    async def test_page_size_is_clamped_without_fetch_all(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_judiciaire(search="x", page_size=500)
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.page_size == 20
+
+
+class TestRechercherJudilibre:
+    async def test_missing_key_id_returns_clear_error(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_judilibre_tool.get_judilibre_client",
+            side_effect=ValueError("JUDILIBRE_KEY_ID doit être défini"),
+        ):
+            result = await rechercher_jurisprudence_judilibre(search="licenciement")
+        assert result["status"] == "error"
+        assert "JUDILIBRE_KEY_ID" in result["error"]
+
+    async def test_no_results_returns_explicit_message(self):
+        with (
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.get_judilibre_client"
+            ),
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.JudilibreAPI"
+            ) as mock_judilibre_cls,
+        ):
+            mock_judilibre_cls.return_value.search.return_value = []
+            result = await rechercher_jurisprudence_judilibre(search="zzzzz")
+        assert result["result"] == "Aucun résultat."
+
+    async def test_returns_formatted_decisions_on_success(self):
+        decision = MagicMock()
+        decision.to_markdown.return_value = "## Cour de cassation\n\nRésumé"
+        with (
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.get_judilibre_client"
+            ),
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.JudilibreAPI"
+            ) as mock_judilibre_cls,
+        ):
+            mock_judilibre_cls.return_value.search.return_value = [decision]
+            result = await rechercher_jurisprudence_judilibre(
+                search="licenciement sans cause réelle et sérieuse"
+            )
+        assert "Cour de cassation" in result["result"]
+
+    async def test_optional_filters_are_forwarded(self):
+        with (
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.get_judilibre_client"
+            ),
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.JudilibreAPI"
+            ) as mock_judilibre_cls,
+        ):
+            mock_judilibre_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_judilibre(
+                search="x",
+                jurisdiction=["Cour de cassation"],
+                chamber=["Chambre sociale"],
+                date_start="2020-01-01",
+                date_end="2020-12-31",
+                page_size=5,
+            )
+        kwargs = mock_judilibre_cls.return_value.search.call_args.kwargs
+        assert kwargs["jurisdiction"] == ["Cour de cassation"]
+        assert kwargs["chamber"] == ["Chambre sociale"]
+        assert kwargs["date_start"] == "2020-01-01"
+        assert kwargs["date_end"] == "2020-12-31"
+        assert kwargs["page_size"] == 5
+
+    async def test_unexpected_exception_returns_error_dict(self):
+        with (
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.get_judilibre_client"
+            ),
+            patch(
+                "legifrance_mcp.src.tools.rechercher_judilibre_tool.JudilibreAPI",
+                side_effect=RuntimeError("boom"),
+            ),
+        ):
+            result = await rechercher_jurisprudence_judilibre(search="x")
+        assert result["status"] == "error"
+        assert "boom" in result["error"]
+
+
+class TestGetTextHistory:
+    async def test_unknown_text_id_returns_explicit_message(self):
+        with patch(
+            "legifrance_mcp.src.tools.get_text_history_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.fetch.return_value = None
+            mock_loda_cls.return_value.search.return_value = []
+            result = await get_text_history(text_id="99-999")
+        assert result["result"] == "Aucun résultat."
+
+    async def test_resolves_law_number_via_search_before_fetching(self):
+        resolved_texte = MagicMock()
+        resolved_texte.format_modifications_report.return_value = (
+            "## Loi 78-17\n\nImpact détaillé"
+        )
+        resolved_texte.versions.return_value = []
+
+        match = MagicMock(id="LEGITEXT000006069095")
+
+        def fake_fetch(text_id):
+            if text_id == "LEGITEXT000006069095":
+                return resolved_texte
+            return None
+
+        with patch(
+            "legifrance_mcp.src.tools.get_text_history_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.fetch.side_effect = fake_fetch
+            mock_loda_cls.return_value.search.return_value = [match]
+            result = await get_text_history(text_id="78-17")
+
+        assert "Impact détaillé" in result["result"]
+
+    async def test_includes_version_history_section(self):
+        version = MagicMock()
+        version.date_debut.strftime.return_value = "01/01/2020"
+        version.date_fin = None
+        version.etat = "VIGUEUR"
+
+        texte = MagicMock()
+        texte.format_modifications_report.return_value = "Aucun impact disponible."
+        texte.to_markdown.return_value = "## Texte\n\ncontenu"
+        texte.versions.return_value = [version]
+
+        with patch(
+            "legifrance_mcp.src.tools.get_text_history_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.fetch.return_value = texte
+            result = await get_text_history(text_id="78-17")
+
+        assert "01/01/2020" in result["result"]
+        assert "VIGUEUR" in result["result"]
+
+    async def test_versions_failure_does_not_crash_the_tool(self):
+        texte = MagicMock()
+        texte.format_modifications_report.return_value = "Aucun impact disponible."
+        texte.to_markdown.return_value = "## Loi 78-17\n\ncontenu"
+        texte.versions.side_effect = Exception("API client error 403 - ...")
+
+        with patch(
+            "legifrance_mcp.src.tools.get_text_history_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.fetch.return_value = texte
+            result = await get_text_history(text_id="78-17")
+
+        assert "Loi 78-17" in result["result"]
+
+    async def test_backend_failure_is_reported_distinctly_from_no_results(self):
+        with patch(
+            "legifrance_mcp.src.tools.get_text_history_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.fetch.return_value = None
+            mock_loda_cls.return_value.search.side_effect = RuntimeError(
+                "503 Service Unavailable"
+            )
+            result = await get_text_history(text_id="78-17")
+
+        assert result["status"] == "error"
+        assert "503" in result["error"]
+
+    def test_resolve_loda_text_propagates_when_search_raises(self):
+        loda = MagicMock()
+        loda.fetch.return_value = None
+        loda.search.side_effect = RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _resolve_loda_text(loda, "78-17")
+
+    def test_resolve_loda_text_returns_none_when_matched_id_is_none(self):
+        loda = MagicMock()
+        loda.fetch.return_value = None
+        loda.search.return_value = [MagicMock(id=None)]
+
+        assert _resolve_loda_text(loda, "78-17") is None
+
+    def test_resolve_loda_text_falls_through_when_first_fetch_raises(self):
+        """text_id not matching the LEGITEXT/JORFTEXT shape .fetch() expects
+        (e.g. "78-17") is expected to raise -- falls through to search."""
+        match = MagicMock(id="LEGITEXT000006069095")
+        resolved = MagicMock()
+
+        def fake_fetch(text_id):
+            if text_id == "78-17":
+                raise ValueError("bad format")
+            return resolved
+
+        loda = MagicMock()
+        loda.fetch.side_effect = fake_fetch
+        loda.search.return_value = [match]
+
+        assert _resolve_loda_text(loda, "78-17") is resolved
+
+    async def test_unexpected_exception_building_the_report_returns_error_dict(self):
+        texte = MagicMock()
+        texte.versions.return_value = []
+        texte.format_modifications_report.side_effect = RuntimeError("boom")
+
+        with patch(
+            "legifrance_mcp.src.tools.get_text_history_tool.Loda"
+        ) as mock_loda_cls:
+            mock_loda_cls.return_value.fetch.return_value = texte
+            result = await get_text_history(text_id="78-17")
+        assert result["status"] == "error"
+        assert "boom" in result["error"]

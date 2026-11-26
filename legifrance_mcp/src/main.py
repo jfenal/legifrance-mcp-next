@@ -5,7 +5,7 @@ from typing import Any, NoReturn
 
 import uvicorn
 
-from legifrance_mcp.src.api import app
+from legifrance_mcp.src.api import app, server
 from legifrance_mcp.src.settings import settings
 from legifrance_mcp.src.settings import validate_config as validate_config_func
 from legifrance_mcp.utils.pylogger import get_python_logger, get_uvicorn_log_config
@@ -45,7 +45,9 @@ def validate_config() -> None:
         raise ValueError(f"Configuration validation failed: {e}") from e
 
 
-def handle_startup_error(error: Exception, context: str = "server startup") -> NoReturn:
+def handle_startup_error(
+    error: BaseException, context: str = "server startup"
+) -> NoReturn:
     """Handle startup errors with proper logging and exit codes.
 
     Args:
@@ -92,6 +94,16 @@ def main() -> None:
         logger.info(
             f"Server configured to use {settings.MCP_TRANSPORT_PROTOCOL} protocol"
         )
+
+        if settings.MCP_TRANSPORT_PROTOCOL == "stdio":
+            # Claude Desktop and other local MCP clients speak stdio to this
+            # process directly -- reuses the same FastMCP server instance
+            # api.py already constructs (building the FastAPI/OAuth app
+            # doesn't itself touch the network or Postgres; that only
+            # happens when uvicorn actually starts serving it, which the
+            # stdio path below never does).
+            server.mcp.run(transport="stdio")
+            return
 
         uvicorn_config: dict[str, Any] = {}
         if settings.MCP_SSL_KEYFILE and settings.MCP_SSL_CERTFILE:

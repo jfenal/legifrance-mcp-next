@@ -6,7 +6,7 @@ This project uses GitHub Actions for automated CI/CD workflows to ensure code qu
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| **Tests** | Push to main, PRs | Run test suite with coverage (80% minimum) |
+| **Tests** | Push to main, PRs | Run test suite with coverage (90% minimum) |
 | **Pre-commit** | Push to main, PRs | Linting, formatting, type checking, security scans |
 | **Labeler** | PR opened/updated | Auto-label PRs by changed file paths |
 | **Release** | Tag push (`v*`) | Create GitHub Release with auto-generated notes |
@@ -18,7 +18,7 @@ This project uses GitHub Actions for automated CI/CD workflows to ensure code qu
 ### Code Quality Assurance
 - Multi-Python version testing (3.12, 3.13)
 - Comprehensive test suite execution
-- Code coverage reporting (80%+ requirement)
+- Code coverage reporting (90%+ requirement)
 - Ruff linting and formatting validation
 - MyPy type checking
 - Docstring validation with pydocstyle

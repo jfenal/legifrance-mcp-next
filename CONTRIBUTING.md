@@ -103,7 +103,7 @@ ci: add dependabot configuration
 
 2. **Ensure all CI checks pass:**
    - Pre-commit hooks (linting, formatting, type checking)
-   - Test suite with coverage >= 80%
+   - Test suite with coverage >= 90%
    - Security scanning (Bandit)
 
 3. **Link related issues** using keywords: `Closes #123`, `Fixes #456`.
@@ -230,7 +230,7 @@ async def my_tool(param: str) -> Dict[str, Any]:
 ## Testing Requirements
 
 - All new code must have corresponding tests.
-- Minimum **80% code coverage** is required.
+- Minimum **90% code coverage** is required.
 - Tests must pass on Python 3.12 and 3.13.
 - Use `pytest` with `pytest-asyncio` for async tests.
 - Mock external dependencies; do not make real network calls in tests.

@@ -9,7 +9,28 @@
 # https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning
 # https://docs.github.com/en/code-security/concepts/secret-security/push-protection
 
+default_install_hook_types: [pre-commit, commit-msg]
+
 repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --strict
+          - build
+          - chore
+          - ci
+          - docs
+          - feat
+          - fix
+          - perf
+          - refactor
+          - revert
+          - style
+          - test
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -45,6 +66,21 @@ repos:
       - id: mypy
         args: [--ignore-missing-imports]
         additional_dependencies: [types-requests]
+
+  - repo: local
+    hooks:
+      - id: basedpyright
+        name: basedpyright
+        entry: uv run basedpyright legifrance_mcp tests
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: pytest-cov
+        name: pytest (with 90% coverage floor)
+        entry: uv run pytest --cov=legifrance_mcp --cov-report=term-missing
+        language: system
+        types: [python]
+        pass_filenames: false
 
   - repo: https://github.com/PyCQA/pydocstyle
     rev: 6.3.0

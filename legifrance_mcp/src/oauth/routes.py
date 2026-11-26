@@ -56,8 +56,7 @@ async def token_endpoint(request: Request) -> Dict[str, Any]:
     if get_oauth_service is None:
         raise RuntimeError("OAuth service not initialized")
     oauth_service = get_oauth_service()
-    result = await controller.handle_token(request, oauth_service)
-    return result.model_dump() if hasattr(result, "model_dump") else result
+    return await controller.handle_token(request, oauth_service)
 
 
 @oauth_router.post("/register")
@@ -82,8 +81,7 @@ async def introspect_endpoint(request: Request) -> Dict[str, Any]:
     if get_oauth_service is None:
         raise RuntimeError("OAuth service not initialized")
     oauth_service = get_oauth_service()
-    result = await controller.handle_introspect(request, oauth_service)
-    return result.model_dump() if hasattr(result, "model_dump") else result
+    return await controller.handle_introspect(request, oauth_service)
 
 
 def register_oauth_routes(app, oauth_service_provider: Callable[[], OAuthService]):

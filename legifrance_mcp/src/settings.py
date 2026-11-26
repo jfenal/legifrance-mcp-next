@@ -82,7 +82,36 @@ class Settings(BaseSettings):
             "env": "MCP_TRANSPORT_PROTOCOL",
             "description": "Transport protocol for the MCP server",
             "example": "streamable-http",
-            "enum": ["streamable-http", "sse", "http"],
+            "enum": ["streamable-http", "sse", "http", "stdio"],
+        },
+    )
+    LEGIFRANCE_CLIENT_ID: Optional[str] = Field(
+        default=None,
+        json_schema_extra={
+            "env": "LEGIFRANCE_CLIENT_ID",
+            "description": "PISTE OAuth2 client ID for the Légifrance/Judilibre APIs",
+        },
+    )
+    LEGIFRANCE_CLIENT_SECRET: Optional[str] = Field(
+        default=None,
+        json_schema_extra={
+            "env": "LEGIFRANCE_CLIENT_SECRET",
+            "description": "PISTE OAuth2 client secret for the Légifrance/Judilibre APIs",
+        },
+    )
+    PISTE_ENV: Literal["sandbox", "production"] = Field(
+        default="production",
+        json_schema_extra={
+            "env": "PISTE_ENV",
+            "description": "PISTE environment to authenticate against",
+            "example": "sandbox",
+        },
+    )
+    JUDILIBRE_KEY_ID: Optional[str] = Field(
+        default=None,
+        json_schema_extra={
+            "env": "JUDILIBRE_KEY_ID",
+            "description": "Judilibre KeyId header value, required by rechercher_jurisprudence_judilibre",
         },
     )
     PYTHON_LOG_LEVEL: str = Field(
@@ -355,7 +384,7 @@ def validate_config(settings: Settings) -> None:
         )
 
     # Validate transport protocol
-    valid_transport_protocols = ["streamable-http", "sse", "http"]
+    valid_transport_protocols = ["streamable-http", "sse", "http", "stdio"]
     if settings.MCP_TRANSPORT_PROTOCOL not in valid_transport_protocols:
         raise ValueError(
             f"MCP_TRANSPORT_PROTOCOL must be one of {valid_transport_protocols}, got {settings.MCP_TRANSPORT_PROTOCOL}"
