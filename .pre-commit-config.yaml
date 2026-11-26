@@ -1,0 +1,61 @@
+# Install: pip install pre-commit && pre-commit install
+#   (or: make install)
+# Run manually: pre-commit run --all-files
+#
+# Secret scanning: gitleaks (staged changes) + detect-private-key.
+# CI also runs a full-repo Gitleaks scan in .github/workflows/pre-commit.yml
+# (the upstream gitleaks hook is staged-only, so it is a no-op on a clean checkout).
+# Also enable GitHub Secret Scanning + Push Protection on the repo:
+# https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning
+# https://docs.github.com/en/code-security/concepts/secret-security/push-protection
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-json
+      - id: check-toml
+      - id: detect-private-key
+
+  # Secret detection (same approach as usernaut / template-ui)
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.2
+    hooks:
+      - id: ruff
+        args: [--fix]
+        exclude: ^tests/
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.16.1
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-requests]
+
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        args: [--convention=google]
+        exclude: ^tests/
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.6
+    hooks:
+      - id: bandit
+        args: [ "-ll" ] # only report medium/high severity
+        exclude: ^tests/
