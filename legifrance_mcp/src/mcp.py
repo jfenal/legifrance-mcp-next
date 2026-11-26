@@ -17,6 +17,9 @@ from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
 from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
     rechercher_jurisprudence_judilibre,
 )
+from legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool import (
+    rechercher_jurisprudence_administrative,
+)
 from legifrance_mcp.src.tools.rechercher_jurisprudence_tool import (
     rechercher_jurisprudence_judiciaire,
 )
@@ -65,7 +68,8 @@ class LegifranceMCPServer:
         Currently includes:
         - rechercher_code: Recherche dans les codes juridiques
         - rechercher_dans_texte_legal: Recherche dans les textes légaux
-        - rechercher_jurisprudence_judiciaire: Recherche de jurisprudence (JURI)
+        - rechercher_jurisprudence_judiciaire: Recherche de jurisprudence judiciaire (JURI)
+        - rechercher_jurisprudence_administrative: Recherche de jurisprudence administrative (CETAT)
         - rechercher_jurisprudence_judilibre: Recherche de jurisprudence (Judilibre)
         - get_text_history: Historique des modifications d'un texte légal
         - legifrance_feedback: Retour d'utilisation (friction mécanique des outils)
@@ -77,6 +81,7 @@ class LegifranceMCPServer:
         self.mcp.tool()(legifrance_rate_limit(rechercher_code))
         self.mcp.tool()(legifrance_rate_limit(rechercher_dans_texte_legal))
         self.mcp.tool()(legifrance_rate_limit(rechercher_jurisprudence_judiciaire))
+        self.mcp.tool()(legifrance_rate_limit(rechercher_jurisprudence_administrative))
         self.mcp.tool()(judilibre_rate_limit(rechercher_jurisprudence_judilibre))
         self.mcp.tool()(legifrance_rate_limit(get_text_history))
         # Not rate-limited: writes to a local log file only, no PISTE call.

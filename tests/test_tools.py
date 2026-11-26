@@ -17,6 +17,9 @@ from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
 from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
     rechercher_jurisprudence_judilibre,
 )
+from legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool import (
+    rechercher_jurisprudence_administrative,
+)
 from legifrance_mcp.src.tools.rechercher_jurisprudence_tool import (
     rechercher_jurisprudence_judiciaire,
 )
@@ -284,6 +287,85 @@ class TestRechercherJurisprudenceJudiciaire:
         ) as mock_juri_cls:
             mock_juri_cls.return_value.search.return_value = []
             await rechercher_jurisprudence_judiciaire(search="x", page_size=500)
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.page_size == 20
+
+
+class TestRechercherJurisprudenceAdministrative:
+    async def test_no_results_returns_explicit_message(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            result = await rechercher_jurisprudence_administrative(search="zzzzz")
+        assert result["result"] == "Aucun résultat."
+
+    async def test_returns_formatted_decisions_on_success(self):
+        decision = MagicMock()
+        decision.to_markdown.return_value = "## Conseil d'État\n\nRésumé"
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = [decision]
+            result = await rechercher_jurisprudence_administrative(
+                search="territorialité fiscale",
+                type_recherche="AU_MOINS_UN_MOT",
+                page_size=500,
+                champ="ALL",
+                sort="DATE_DESC",
+                fetch_all=True,
+                juri_keys=["titre"],
+            )
+        assert "Conseil d'État" in result["result"]
+
+    async def test_searches_the_cetat_fond(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_administrative(search="x")
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.fond == "CETAT"
+
+    async def test_fetch_all_uses_max_page_size(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_administrative(search="x", fetch_all=True)
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.page_size == 20
+
+    async def test_proximite_is_forwarded_as_proximity(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_administrative(
+                search="dommages intérêts", proximite=3
+            )
+
+        query = mock_juri_cls.return_value.search.call_args.args[0]
+        assert query.proximity == 3
+
+    async def test_unexpected_exception_returns_error_dict(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await rechercher_jurisprudence_administrative(search="x")
+        assert result["status"] == "error"
+        assert "boom" in result["error"]
+
+    async def test_page_size_is_clamped_without_fetch_all(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool.JuriAPI"
+        ) as mock_juri_cls:
+            mock_juri_cls.return_value.search.return_value = []
+            await rechercher_jurisprudence_administrative(search="x", page_size=500)
 
         query = mock_juri_cls.return_value.search.call_args.args[0]
         assert query.page_size == 20

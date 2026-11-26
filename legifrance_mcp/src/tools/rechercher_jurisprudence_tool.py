@@ -51,13 +51,13 @@ async def rechercher_jurisprudence_judiciaire(
 
     TOOL_NAME=rechercher_jurisprudence_judiciaire
     DISPLAY_NAME=Recherche de jurisprudence judiciaire
-    USECASE=Trouver des décisions de justice (Cour de cassation, cours d'appel) par mots-clés ou numéro d'affaire
+    USECASE=Trouver des décisions de justice judiciaires (Cour de cassation, cours d'appel) par mots-clés ou numéro d'affaire. Ne couvre PAS le contentieux administratif/fiscal (Conseil d'État) : utiliser rechercher_jurisprudence_administrative pour cela
     INSTRUCTIONS=1. Fournir les termes ou numéro d'affaire, 2. Affiner avec champ/type_recherche/juridiction_judiciaire/sort si besoin
     INPUT_DESCRIPTION=search (termes ou numéro d'affaire), publication_bulletin (['T'] ou ['F']), sort ("PERTINENCE"/"DATE_DESC"/"DATE_ASC"), champ, type_recherche, proximite, page_size (max 20), fetch_all, juri_keys (champs à extraire), juridiction_judiciaire (liste de juridictions)
     OUTPUT_DESCRIPTION=Dictionnaire avec status, décisions formatées en Markdown, et message
     EXAMPLES=rechercher_jurisprudence_judiciaire("rupture brutale des relations commerciales établies", sort="DATE_DESC")
     PREREQUISITES=None
-    RELATED_TOOLS=rechercher_jurisprudence_judilibre (source complémentaire), rechercher_code/rechercher_dans_texte_legal (pour retrouver les textes visés)
+    RELATED_TOOLS=rechercher_jurisprudence_administrative (pour le Conseil d'État/contentieux administratif et fiscal), rechercher_jurisprudence_judilibre (source complémentaire), rechercher_code/rechercher_dans_texte_legal (pour retrouver les textes visés)
 
     I/O-bound operation - uses async def for the underlying Légifrance API call.
 

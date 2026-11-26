@@ -16,7 +16,8 @@ Il repose sur [FastMCP](https://gofastmcp.com/) et l'architecture "tools-first" 
 | --- | --- |
 | `rechercher_code` | Recherche dans les codes juridiques français (ex: Code civil, Code du travail) |
 | `rechercher_dans_texte_legal` | Recherche d'articles dans les textes légaux (lois, ordonnances, décrets, arrêtés) |
-| `rechercher_jurisprudence_judiciaire` | Recherche dans la jurisprudence judiciaire (fonds JURI de Légifrance) |
+| `rechercher_jurisprudence_judiciaire` | Recherche dans la jurisprudence judiciaire (fonds JURI de Légifrance : Cour de cassation, cours d'appel) |
+| `rechercher_jurisprudence_administrative` | Recherche dans la jurisprudence administrative (fonds CETAT de Légifrance : Conseil d'État, cours administratives d'appel, tribunaux administratifs) |
 | `rechercher_jurisprudence_judilibre` | Recherche de décisions de justice via l'API Judilibre (Cour de cassation, juridictions du fond) |
 | `get_text_history` | Historique des modifications (créations, modifications, abrogations d'articles) d'un texte légal |
 | `legifrance_feedback` | Signalement de friction mécanique dans l'usage des outils (journalisation locale uniquement, jamais soumis automatiquement) |

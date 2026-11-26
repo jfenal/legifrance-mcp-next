@@ -10,6 +10,9 @@ from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
 from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
     rechercher_jurisprudence_judilibre,
 )
+from legifrance_mcp.src.tools.rechercher_jurisprudence_administrative_tool import (
+    rechercher_jurisprudence_administrative,
+)
 from legifrance_mcp.src.tools.rechercher_jurisprudence_tool import (
     rechercher_jurisprudence_judiciaire,
 )
@@ -103,8 +106,8 @@ class TestLegifranceMCPServer:
         # Assert
         # Verify that tool() was called multiple times (once for each tool)
         # __init__ already called _register_mcp_tools() once; this test calls
-        # it again explicitly, so the 6 tools are registered twice over.
-        assert mock_mcp.tool.call_count >= 6
+        # it again explicitly, so the 7 tools are registered twice over.
+        assert mock_mcp.tool.call_count >= 7
 
     def test_server_attributes(self):
         """Test that server has required attributes for tools-first architecture."""
@@ -141,6 +144,7 @@ class TestLegifranceMCPServer:
             rechercher_code,
             rechercher_dans_texte_legal,
             rechercher_jurisprudence_judiciaire,
+            rechercher_jurisprudence_administrative,
             get_text_history,
         ]:
             assert original not in registered_fns, (
