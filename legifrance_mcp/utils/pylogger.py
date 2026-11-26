@@ -1,8 +1,17 @@
-"""Structured logger utility for the Legifrance MCP server."""
+"""Structured logger utility for the Legifrance MCP server.
+
+Everything here logs to stderr, never stdout: under the stdio transport,
+stdout is the JSON-RPC protocol channel, and any stray log line written
+there corrupts it for the calling client. An optional file handler can
+be added on top for persisting logs past the lifetime of the MCP
+client's process. See
+https://github.com/jfenal/legifrance-mcp/issues/16.
+"""
 
 import logging
 import sys
-from typing import Any, Dict, List, Set
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Union
 
 import structlog
 
@@ -93,33 +102,70 @@ def _setup_logger(logger_name: str, level: str) -> None:
 
 def _configure_third_party_loggers(log_level: str) -> None:
     """Apply structured logging to selected third-party loggers."""
-    logging.getLogger().handlers.clear()
-
     for name in THIRD_PARTY_LOGGERS:
         _setup_logger(name, log_level)
+
+
+def _configure_root_handlers(
+    log_level: str, log_file: Optional[Union[str, Path]]
+) -> None:
+    """Attach root logger handlers explicitly, rather than via `logging.basicConfig`.
+
+    `basicConfig()` is a no-op once the root logger already has a handler
+    from anywhere else (e.g. a third-party import) -- which is exactly
+    what silently defeated the previous `stream=sys.stdout` config here.
+    Explicitly clearing and re-attaching handlers makes this deterministic
+    regardless of import order.
+
+    The root logger's own level is kept at DEBUG so a file handler can
+    capture full detail even when the console handler (which does honor
+    `log_level`) is quieter -- each handler filters independently.
+    """
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter("%(message)s")
+
+    stderr_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_handler.setLevel(log_level)
+    stderr_handler.setFormatter(formatter)
+    root.addHandler(stderr_handler)
+
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
 
 
 # --- Public API ---
 
 
-def force_reconfigure_all_loggers(log_level: str = "INFO") -> None:
+def force_reconfigure_all_loggers(
+    log_level: str = "INFO", *, log_file: Optional[Union[str, Path]] = None
+) -> None:
     """Force logger reconfiguration, even if already initialized."""
     global _LOGGING_CONFIGURED
     _LOGGING_CONFIGURED = False
-    get_python_logger(log_level)
+    get_python_logger(log_level, log_file=log_file)
 
 
-def get_python_logger(log_level: str = "INFO") -> structlog.BoundLogger:
-    """Get a configured structlog logger."""
+def get_python_logger(
+    log_level: str = "INFO", *, log_file: Optional[Union[str, Path]] = None
+) -> structlog.BoundLogger:
+    """Get a configured structlog logger.
+
+    `log_file`: when given, also writes full-detail (DEBUG+) logs to
+    this path, independent of `log_level` (which only governs the
+    stderr/console handler). Opt-in, since writing a file is a side
+    effect not every caller wants.
+    """
     global _LOGGING_CONFIGURED
     log_level = log_level.upper()
 
     if not _LOGGING_CONFIGURED:
-        logging.basicConfig(
-            format="%(message)s",
-            stream=sys.stdout,
-            level=log_level,
-        )
+        _configure_root_handlers(log_level, log_file)
 
         structlog.configure(
             processors=[
@@ -145,8 +191,16 @@ def get_python_logger(log_level: str = "INFO") -> structlog.BoundLogger:
     return structlog.get_logger()
 
 
-def get_uvicorn_log_config(log_level: str = "INFO") -> Dict[str, Any]:
-    """Return a Uvicorn-compatible logging config that integrates with structlog."""
+def get_uvicorn_log_config(
+    log_level: str = "INFO", *, log_file: Optional[Union[str, Path]] = None
+) -> Dict[str, Any]:
+    """Return a Uvicorn-compatible logging config that integrates with structlog.
+
+    Logs to stderr (not stdout -- consistent with `get_python_logger`,
+    even though stdout isn't protocol-sensitive for the HTTP transport
+    the way it is for stdio). `log_file`: optionally also write full-
+    detail (DEBUG+) logs to this path.
+    """
     log_level = log_level.upper()
     default_formatter = {
         "()": "structlog.stdlib.ProcessorFormatter",
@@ -160,10 +214,12 @@ def get_uvicorn_log_config(log_level: str = "INFO") -> Dict[str, Any]:
         ],
     }
 
+    handler_names = ["default"] + (["file"] if log_file else [])
+
     def make_logger_config(names: List[str], level: str) -> Dict[str, Any]:
         return {
             name: {
-                "handlers": ["default"],
+                "handlers": handler_names,
                 "level": level,
                 "propagate": False,
             }
@@ -174,6 +230,26 @@ def get_uvicorn_log_config(log_level: str = "INFO") -> Dict[str, Any]:
     base_loggers = ["", "uvicorn", "uvicorn.error", "uvicorn.asgi", "uvicorn.protocols"]
     access_loggers = ["uvicorn.access"]
 
+    handlers: Dict[str, Any] = {
+        "default": {
+            "formatter": "default",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+        },
+        "access": {
+            "formatter": "access",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+        },
+    }
+    if log_file:
+        handlers["file"] = {
+            "formatter": "default",
+            "class": "logging.FileHandler",
+            "filename": str(log_file),
+            "level": "DEBUG",
+        }
+
     return {
         "version": 1,
         "disable_existing_loggers": False,
@@ -181,18 +257,7 @@ def get_uvicorn_log_config(log_level: str = "INFO") -> Dict[str, Any]:
             "default": default_formatter,
             "access": default_formatter,
         },
-        "handlers": {
-            "default": {
-                "formatter": "default",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            },
-            "access": {
-                "formatter": "access",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            },
-        },
+        "handlers": handlers,
         "loggers": {
             **make_logger_config(base_loggers, log_level),
             **make_logger_config(access_loggers, log_level),

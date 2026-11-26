@@ -130,6 +130,20 @@ class Settings(BaseSettings):
             "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         },
     )
+    LOG_FILE_PATH: Optional[str] = Field(
+        default=None,
+        json_schema_extra={
+            "env": "LOG_FILE_PATH",
+            "description": (
+                "Optional path to also write full-detail (DEBUG+) logs to, "
+                "independent of PYTHON_LOG_LEVEL -- unset by default, since "
+                "writing a file is a side effect not every caller wants. "
+                "Logs always go to stderr regardless (never stdout, which "
+                "is the JSON-RPC channel under stdio transport)."
+            ),
+            "example": "/var/log/legifrance-mcp/server.log",
+        },
+    )
     CORS_ENABLED: bool = Field(
         default=False,
         json_schema_extra={

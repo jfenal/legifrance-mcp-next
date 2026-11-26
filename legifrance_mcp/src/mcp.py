@@ -45,7 +45,9 @@ class LegifranceMCPServer:
             self.mcp = FastMCP("legifrance")
 
             # Force reconfigure all loggers after FastMCP initialization to ensure structured logging
-            force_reconfigure_all_loggers(settings.PYTHON_LOG_LEVEL)
+            force_reconfigure_all_loggers(
+                settings.PYTHON_LOG_LEVEL, log_file=settings.LOG_FILE_PATH
+            )
 
             self._register_mcp_tools()
 

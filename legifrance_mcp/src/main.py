@@ -119,7 +119,9 @@ def main() -> None:
             app,
             host=settings.MCP_HOST,
             port=settings.MCP_PORT,
-            log_config=get_uvicorn_log_config(settings.PYTHON_LOG_LEVEL),
+            log_config=get_uvicorn_log_config(
+                settings.PYTHON_LOG_LEVEL, log_file=settings.LOG_FILE_PATH
+            ),
             **uvicorn_config,
         )
 

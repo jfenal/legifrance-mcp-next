@@ -1,5 +1,8 @@
 """Tests for the utils module."""
 
+import logging
+import sys
+
 from unittest.mock import Mock, patch
 
 import pytest
@@ -19,6 +22,89 @@ from legifrance_mcp.utils.pylogger import (
     get_python_logger,
     get_uvicorn_log_config,
 )
+
+
+@pytest.fixture
+def clean_root_logger():
+    """Isolate root logger handler state across tests.
+
+    get_python_logger()/force_reconfigure_all_loggers() mutate the real
+    root logger (handlers, level) as a side effect -- without this, a
+    test that attaches a stderr/file handler would leak it into every
+    test that runs afterward in the same process.
+    """
+    import legifrance_mcp.utils.pylogger as pylogger_module
+
+    root = logging.getLogger()
+    saved_handlers = list(root.handlers)
+    saved_level = root.level
+    saved_configured = pylogger_module._LOGGING_CONFIGURED
+    pylogger_module._LOGGING_CONFIGURED = False
+    root.handlers.clear()
+
+    yield
+
+    root.handlers.clear()
+    root.handlers.extend(saved_handlers)
+    root.setLevel(saved_level)
+    pylogger_module._LOGGING_CONFIGURED = saved_configured
+
+
+class TestPyloggerStreamSeparation:
+    """stdout is the JSON-RPC channel under stdio transport -- application
+    logging must never write there, only to stderr (and optionally a file).
+    See https://github.com/jfenal/legifrance-mcp/issues/16.
+    """
+
+    def test_logs_go_to_stderr_not_stdout(self, clean_root_logger, capsys):
+        force_reconfigure_all_loggers("INFO")
+        logging.getLogger("legifrance_mcp.test_stream_separation").info("hello")
+
+        captured = capsys.readouterr()
+        assert "hello" not in captured.out
+        assert "hello" in captured.err
+
+    def test_root_logger_has_no_stdout_handler(self, clean_root_logger):
+        force_reconfigure_all_loggers("INFO")
+
+        for handler in logging.getLogger().handlers:
+            stream = getattr(handler, "stream", None)
+            assert stream is not sys.stdout
+
+    def test_log_file_option_writes_to_configured_path(
+        self, clean_root_logger, tmp_path
+    ):
+        log_file = tmp_path / "legifrance-mcp.log"
+
+        force_reconfigure_all_loggers("INFO", log_file=log_file)
+        logging.getLogger("legifrance_mcp.test_file_logging").warning(
+            "file test message"
+        )
+
+        assert log_file.exists()
+        assert "file test message" in log_file.read_text()
+
+    def test_log_file_captures_debug_even_when_console_level_is_info(
+        self, clean_root_logger, tmp_path, capsys
+    ):
+        log_file = tmp_path / "legifrance-mcp.log"
+
+        force_reconfigure_all_loggers("INFO", log_file=log_file)
+        logging.getLogger("legifrance_mcp.test_file_debug").debug("debug detail")
+
+        captured = capsys.readouterr()
+        assert "debug detail" not in captured.err  # console stays at INFO
+        assert "debug detail" in log_file.read_text()  # file keeps full detail
+
+    def test_no_log_file_by_default(self, clean_root_logger):
+        force_reconfigure_all_loggers("INFO")
+
+        file_handlers = [
+            h
+            for h in logging.getLogger().handlers
+            if isinstance(h, logging.FileHandler)
+        ]
+        assert file_handlers == []
 
 
 class TestPylogger:
@@ -196,9 +282,10 @@ class TestPylogger:
         import inspect
 
         sig = inspect.signature(get_python_logger)
-        assert len(sig.parameters) == 1
         assert "log_level" in sig.parameters
         assert sig.parameters["log_level"].default == "INFO"
+        assert "log_file" in sig.parameters
+        assert sig.parameters["log_file"].default is None
 
     def test_get_python_logger_multiple_calls(self):
         """Test that multiple calls to get_python_logger work correctly."""
@@ -263,7 +350,7 @@ class TestPylogger:
         force_reconfigure_all_loggers()
 
         # Assert
-        mock_get_logger.assert_called_once_with("INFO")
+        mock_get_logger.assert_called_once_with("INFO", log_file=None)
 
     @patch("legifrance_mcp.utils.pylogger.get_python_logger")
     def test_force_reconfigure_all_loggers_custom_level(self, mock_get_logger):
@@ -276,7 +363,7 @@ class TestPylogger:
         force_reconfigure_all_loggers(custom_level)
 
         # Assert
-        mock_get_logger.assert_called_once_with(custom_level)
+        mock_get_logger.assert_called_once_with(custom_level, log_file=None)
 
     @patch("legifrance_mcp.utils.pylogger._LOGGING_CONFIGURED", True)
     @patch("legifrance_mcp.utils.pylogger.get_python_logger")
@@ -295,7 +382,7 @@ class TestPylogger:
 
         # Assert - the function should reset the flag and then call get_python_logger
         # which will set it back to True
-        mock_get_logger.assert_called_once_with("INFO")
+        mock_get_logger.assert_called_once_with("INFO", log_file=None)
 
     # Tests for get_uvicorn_log_config()
     def test_get_uvicorn_log_config_default_level(self):
@@ -389,6 +476,25 @@ class TestPylogger:
         assert "formatter" in default_handler
         assert "class" in default_handler
         assert "stream" in default_handler
+
+    def test_get_uvicorn_log_config_streams_to_stderr(self):
+        config = get_uvicorn_log_config()
+
+        assert config["handlers"]["default"]["stream"] == "ext://sys.stderr"
+        assert config["handlers"]["access"]["stream"] == "ext://sys.stderr"
+
+    def test_get_uvicorn_log_config_with_log_file_adds_file_handler(self, tmp_path):
+        log_file = tmp_path / "uvicorn.log"
+        config = get_uvicorn_log_config(log_file=log_file)
+
+        assert "file" in config["handlers"]
+        assert config["handlers"]["file"]["filename"] == str(log_file)
+        assert "file" in config["loggers"][""]["handlers"]
+
+    def test_get_uvicorn_log_config_without_log_file_has_no_file_handler(self):
+        config = get_uvicorn_log_config()
+
+        assert "file" not in config["handlers"]
 
     def test_get_uvicorn_log_config_error_only_loggers(self):
         """Test that ERROR_ONLY_LOGGERS are configured with ERROR level."""
@@ -519,23 +625,25 @@ class TestPylogger:
         mock_logger.setLevel.assert_called_once_with(mock_logging.ERROR)
         assert mock_logger.propagate is True
 
-    @patch("legifrance_mcp.utils.pylogger.logging")
     @patch("legifrance_mcp.utils.pylogger._setup_logger")
-    def test_configure_third_party_loggers(self, mock_setup_logger, mock_logging):
-        """Test _configure_third_party_loggers function."""
+    def test_configure_third_party_loggers(self, mock_setup_logger):
+        """Test _configure_third_party_loggers function.
+
+        Does NOT clear the root logger's handlers -- that's
+        _configure_root_handlers's job now, called once per
+        (re)configuration rather than on every call (previously this
+        function cleared root's handlers unconditionally on every call,
+        which would silently wipe out the stderr/file handlers
+        _configure_root_handlers sets up the moment anything called
+        get_python_logger() a second time). See issue #16.
+        """
         # Arrange
         log_level = "DEBUG"
-        mock_root_logger = Mock()
-        mock_logging.getLogger.return_value = mock_root_logger
 
         # Act
         _configure_third_party_loggers(log_level)
 
         # Assert
-        # Check that root logger handlers are cleared
-        mock_logging.getLogger.assert_called_once_with()
-        mock_root_logger.handlers.clear.assert_called_once()
-
         # Check that _setup_logger is called for each third-party logger
         expected_calls = len(THIRD_PARTY_LOGGERS)
         assert mock_setup_logger.call_count == expected_calls
