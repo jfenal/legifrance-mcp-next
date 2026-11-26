@@ -55,6 +55,27 @@ spec:
                 configMapKeyRef:
                   name: legifrance-mcp-config
                   key: ENABLE_AUTH
+            - name: PISTE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: legifrance-mcp-config
+                  key: PISTE_ENV
+            - name: LEGIFRANCE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: legifrance-mcp-secrets
+                  key: LEGIFRANCE_CLIENT_ID
+            - name: LEGIFRANCE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: legifrance-mcp-secrets
+                  key: LEGIFRANCE_CLIENT_SECRET
+            - name: JUDILIBRE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: legifrance-mcp-secrets
+                  key: JUDILIBRE_API_KEY
+                  optional: true
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:

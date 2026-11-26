@@ -70,11 +70,11 @@ def get_judilibre_client() -> JudilibreClient:
     """
     global _judilibre_client
     if _judilibre_client is None:
-        if not settings.JUDILIBRE_KEY_ID:
-            raise ValueError("JUDILIBRE_KEY_ID doit être défini")
+        if not settings.JUDILIBRE_API_KEY:
+            raise ValueError("JUDILIBRE_API_KEY doit être défini")
         api_url = _JUDILIBRE_URLS.get(settings.PISTE_ENV, JUDILIBRE_SANDBOX_URL)
         _judilibre_client = JudilibreClient(
-            _api_config(), key_id=settings.JUDILIBRE_KEY_ID, api_url=api_url
+            _api_config(), key_id=settings.JUDILIBRE_API_KEY, api_url=api_url
         )
     return _judilibre_client
 

@@ -29,15 +29,15 @@ class TestGetJudilibreClient:
     def test_raises_when_key_id_missing(self, monkeypatch):
         monkeypatch.setattr(lc.settings, "LEGIFRANCE_CLIENT_ID", "id")
         monkeypatch.setattr(lc.settings, "LEGIFRANCE_CLIENT_SECRET", "secret")
-        monkeypatch.setattr(lc.settings, "JUDILIBRE_KEY_ID", None)
+        monkeypatch.setattr(lc.settings, "JUDILIBRE_API_KEY", None)
 
-        with pytest.raises(ValueError, match="JUDILIBRE_KEY_ID"):
+        with pytest.raises(ValueError, match="JUDILIBRE_API_KEY"):
             lc.get_judilibre_client()
 
     def test_constructs_and_caches_client(self, monkeypatch):
         monkeypatch.setattr(lc.settings, "LEGIFRANCE_CLIENT_ID", "id")
         monkeypatch.setattr(lc.settings, "LEGIFRANCE_CLIENT_SECRET", "secret")
-        monkeypatch.setattr(lc.settings, "JUDILIBRE_KEY_ID", "key-id")
+        monkeypatch.setattr(lc.settings, "JUDILIBRE_API_KEY", "key-id")
 
         with patch.object(lc, "JudilibreClient") as mock_cls:
             first = lc.get_judilibre_client()

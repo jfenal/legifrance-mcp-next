@@ -272,11 +272,11 @@ class TestRechercherJudilibre:
     async def test_missing_key_id_returns_clear_error(self):
         with patch(
             "legifrance_mcp.src.tools.rechercher_judilibre_tool.get_judilibre_client",
-            side_effect=ValueError("JUDILIBRE_KEY_ID doit être défini"),
+            side_effect=ValueError("JUDILIBRE_API_KEY doit être défini"),
         ):
             result = await rechercher_jurisprudence_judilibre(search="licenciement")
         assert result["status"] == "error"
-        assert "JUDILIBRE_KEY_ID" in result["error"]
+        assert "JUDILIBRE_API_KEY" in result["error"]
 
     async def test_no_results_returns_explicit_message(self):
         with (

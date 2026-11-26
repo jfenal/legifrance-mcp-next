@@ -107,10 +107,10 @@ class Settings(BaseSettings):
             "example": "sandbox",
         },
     )
-    JUDILIBRE_KEY_ID: Optional[str] = Field(
+    JUDILIBRE_API_KEY: Optional[str] = Field(
         default=None,
         json_schema_extra={
-            "env": "JUDILIBRE_KEY_ID",
+            "env": "JUDILIBRE_API_KEY",
             "description": "Judilibre KeyId header value, required by rechercher_jurisprudence_judilibre",
         },
     )

@@ -9,6 +9,10 @@ data:
   MCP_PORT: "5001"
   PYTHON_LOG_LEVEL: "INFO"
   MCP_TRANSPORT_PROTOCOL: "http"
+  # "sandbox" or "production" -- not sensitive, the credentials that go
+  # with it (LEGIFRANCE_CLIENT_ID/SECRET, JUDILIBRE_API_KEY) are in
+  # secret.yaml, same variable names as .env.example/settings.py.
+  PISTE_ENV: "production"
   CORS_ENABLED: "true"
   ENVIRONMENT: "production"
   ENABLE_AUTH: "false"

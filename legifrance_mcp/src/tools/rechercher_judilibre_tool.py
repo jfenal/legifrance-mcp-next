@@ -35,7 +35,7 @@ async def rechercher_jurisprudence_judilibre(
     INPUT_DESCRIPTION=search (termes), jurisdiction (liste de juridictions), chamber (liste de chambres), date_start/date_end (YYYY-MM-DD), page_size (max 20)
     OUTPUT_DESCRIPTION=Dictionnaire avec status, décisions formatées en Markdown, et message
     EXAMPLES=rechercher_jurisprudence_judilibre("licenciement sans cause réelle et sérieuse")
-    PREREQUISITES=La variable d'environnement JUDILIBRE_KEY_ID doit être configurée
+    PREREQUISITES=La variable d'environnement JUDILIBRE_API_KEY doit être configurée
     RELATED_TOOLS=rechercher_jurisprudence_judiciaire (source complémentaire)
 
     I/O-bound operation - uses async def for the underlying Judilibre API call.
