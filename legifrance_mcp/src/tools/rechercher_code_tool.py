@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from pylegifrance.fonds.code import Code
 from pylegifrance.models.code.enum import NomCode, TypeChampCode
+from pylegifrance.models.constants import EtatJuridique
 
 from legifrance_mcp.src.legifrance_client import (
     CHAMP_TO_TYPE_CHAMP_CODE,
@@ -46,6 +47,7 @@ async def rechercher_code(
     proximite: Optional[int] = None,
     page_size: Optional[int] = None,
     fetch_all: bool = False,
+    uniquement_en_vigueur: bool = True,
 ) -> Dict[str, Any]:
     """Recherche des articles juridiques dans les codes de loi français.
 
@@ -53,7 +55,7 @@ async def rechercher_code(
     DISPLAY_NAME=Recherche dans les codes juridiques
     USECASE=Trouver des articles dans un code juridique français (Code civil, Code du travail, etc.)
     INSTRUCTIONS=1. Fournir les termes de recherche, 2. Indiquer le nom du code, 3. Affiner avec champ/type_recherche/proximite si besoin
-    INPUT_DESCRIPTION=search (termes de recherche), code_name (ex: "Code civil"), champ ("ALL"/"TITLE"/"TABLE"/"NUM_ARTICLE"/"ARTICLE"), sort, type_recherche, proximite (distance max en mots), page_size (max 20), fetch_all (utiliser la taille de page maximale)
+    INPUT_DESCRIPTION=search (termes de recherche), code_name (ex: "Code civil"), champ ("ALL"/"TITLE"/"TABLE"/"NUM_ARTICLE"/"ARTICLE"), sort, type_recherche, proximite (distance max en mots), page_size (max 20), fetch_all (utiliser la taille de page maximale), uniquement_en_vigueur (défaut: true, ne renvoie que la version actuellement en vigueur ; mettre à false pour voir aussi les versions historiques/abrogées)
     OUTPUT_DESCRIPTION=Dictionnaire avec status, résultats formatés en Markdown (un article par résultat, URL Légifrance incluse), et message
     EXAMPLES=rechercher_code("pacte civil de solidarité", "Code civil"), rechercher_code("1240", "Code civil", champ="NUM_ARTICLE")
     PREREQUISITES=Connaître le nom du code à interroger
@@ -70,6 +72,8 @@ async def rechercher_code(
         proximite: Distance maximale en mots entre les termes recherchés.
         page_size: Nombre de résultats (max 20).
         fetch_all: Utiliser la taille de page maximale (20) plutôt que la valeur par défaut.
+        uniquement_en_vigueur: Ne renvoyer que la version actuellement en vigueur de
+            chaque article (par défaut), plutôt que toutes les versions historiques.
 
     Returns:
         Dict[str, Any]: status, résultats formatés en Markdown, et message.
@@ -88,6 +92,8 @@ async def rechercher_code(
         builder = (
             Code(get_legifrance_client()).search().in_code(resolved).with_formatter()
         )
+        if uniquement_en_vigueur:
+            builder = builder.with_legal_status([EtatJuridique.VIGUEUR])
 
         if champ == "NUM_ARTICLE" and search:
             builder = builder.article_number(search)

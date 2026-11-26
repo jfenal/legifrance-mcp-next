@@ -140,10 +140,13 @@ def format_results(results: list, to_text) -> str:
     """Formats a list of results as Markdown, bounded in count and size.
 
     Caps both the number of results and each result's length so a broad
-    search doesn't flood the calling LLM's context budget.
+    search doesn't flood the calling LLM's context budget. A single
+    result gets the larger single-document budget instead of the
+    per-result one, since there's no sibling result to leave room for.
     """
     limited = results[:MAX_RESULTS_PER_RESPONSE]
-    parts = [truncate(to_text(item)) for item in limited]
+    limit = MAX_CHARS_SINGLE_DOCUMENT if len(limited) == 1 else MAX_CHARS_PER_RESULT
+    parts = [truncate(to_text(item), limit) for item in limited]
     output = "\n\n---\n\n".join(parts)
     remaining = len(results) - len(limited)
     if remaining > 0:

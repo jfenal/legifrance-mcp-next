@@ -88,3 +88,19 @@ class TestFormatResults:
         output = lc.format_results(results, lambda n: f"item-{n}")
         assert output.count("item-") == lc.MAX_RESULTS_PER_RESPONSE
         assert "3 résultat" in output
+
+    def test_single_result_gets_the_larger_single_document_budget(self):
+        text = "x" * (lc.MAX_CHARS_PER_RESULT + 500)
+        output = lc.format_results([text], lambda t: t)
+        assert "tronqué" not in output
+        assert len(output) == len(text)
+
+    def test_single_result_still_truncates_beyond_the_single_document_budget(self):
+        text = "x" * (lc.MAX_CHARS_SINGLE_DOCUMENT + 500)
+        output = lc.format_results([text], lambda t: t)
+        assert "tronqué" in output
+
+    def test_multiple_results_still_use_the_smaller_per_result_budget(self):
+        text = "x" * (lc.MAX_CHARS_PER_RESULT + 500)
+        output = lc.format_results([text, text], lambda t: t)
+        assert output.count("tronqué") == 2

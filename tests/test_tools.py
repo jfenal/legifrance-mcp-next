@@ -49,7 +49,7 @@ class TestRechercherCode:
             "legifrance_mcp.src.tools.rechercher_code_tool.Code"
         ) as mock_code_cls:
             (
-                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.text.return_value.execute.return_value
+                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.with_legal_status.return_value.text.return_value.execute.return_value
             ) = []
             result = await rechercher_code(search="zzzzz", code_name="Code civil")
         assert result["status"] == "success"
@@ -69,7 +69,7 @@ class TestRechercherCode:
             "legifrance_mcp.src.tools.rechercher_code_tool.Code"
         ) as mock_code_cls:
             (
-                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.text.return_value.execute.return_value
+                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.with_legal_status.return_value.text.return_value.execute.return_value
             ) = [article]
             result = await rechercher_code(
                 search="responsabilité", code_name="Code civil", champ="ARTICLE"
@@ -83,7 +83,7 @@ class TestRechercherCode:
             "legifrance_mcp.src.tools.rechercher_code_tool.Code"
         ) as mock_code_cls:
             (
-                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.text.return_value.execute.return_value
+                mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.with_legal_status.return_value.text.return_value.execute.return_value
             ) = []
             result = await rechercher_code(search="x", code_name="Code penal")
         assert result["status"] == "success"
@@ -92,7 +92,7 @@ class TestRechercherCode:
         with patch(
             "legifrance_mcp.src.tools.rechercher_code_tool.Code"
         ) as mock_code_cls:
-            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.with_legal_status.return_value
             builder.text.return_value.execute.return_value = []
             await rechercher_code(
                 search="bail commercial", code_name="Code civil", proximite=3
@@ -103,7 +103,7 @@ class TestRechercherCode:
         with patch(
             "legifrance_mcp.src.tools.rechercher_code_tool.Code"
         ) as mock_code_cls:
-            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.with_legal_status.return_value
             builder.article_number.return_value.execute.return_value = []
             await rechercher_code(
                 search="1240", code_name="Code civil", champ="NUM_ARTICLE"
@@ -114,7 +114,7 @@ class TestRechercherCode:
         with patch(
             "legifrance_mcp.src.tools.rechercher_code_tool.Code"
         ) as mock_code_cls:
-            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value.with_legal_status.return_value
             builder.text.return_value.execute.return_value = []
             await rechercher_code(search="x", code_name="Code civil", fetch_all=True)
         builder.text.return_value.paginate.assert_called_once_with(page_size=20)
@@ -127,6 +127,29 @@ class TestRechercherCode:
             result = await rechercher_code(search="x", code_name="Code civil")
         assert result["status"] == "error"
         assert "boom" in result["error"]
+
+    async def test_defaults_to_vigueur_only_results(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            with_formatter = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            builder = with_formatter.with_legal_status.return_value
+            builder.text.return_value.execute.return_value = []
+            await rechercher_code(search="x", code_name="Code civil")
+        with_formatter.with_legal_status.assert_called_once()
+        (statuses,) = with_formatter.with_legal_status.call_args.args
+        assert [s.value for s in statuses] == ["VIGUEUR"]
+
+    async def test_uniquement_en_vigueur_false_skips_the_filter(self):
+        with patch(
+            "legifrance_mcp.src.tools.rechercher_code_tool.Code"
+        ) as mock_code_cls:
+            with_formatter = mock_code_cls.return_value.search.return_value.in_code.return_value.with_formatter.return_value
+            with_formatter.text.return_value.execute.return_value = []
+            await rechercher_code(
+                search="x", code_name="Code civil", uniquement_en_vigueur=False
+            )
+        with_formatter.with_legal_status.assert_not_called()
 
 
 class TestRechercherTexteLegal:
