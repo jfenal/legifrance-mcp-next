@@ -1,6 +1,6 @@
 """Agent feedback pipeline.
 
-`legifrance_report_discovery` lets the calling agent report mechanical
+`legifrance_feedback` lets the calling agent report mechanical
 tool/API friction (empty results, confusing param shapes, silent
 clamping) to help improve this MCP server. This module never submits
 anything to GitHub on its own -- it has no reliable way to know whether
@@ -40,7 +40,7 @@ _KNOWN_TOOL_NAMES = frozenset(
         "rechercher_jurisprudence_judiciaire",
         "rechercher_jurisprudence_judilibre",
         "get_text_history",
-        "legifrance_report_discovery",
+        "legifrance_feedback",
     }
 )
 
@@ -88,7 +88,7 @@ def _write_local_log(entry: JsonDict) -> None:
         f.write(json.dumps(entry) + "\n")
 
 
-async def legifrance_report_discovery(
+async def legifrance_feedback(
     fond_types: List[str],
     tools_used: List[str],
     action_sequence: List[str],
@@ -99,13 +99,13 @@ async def legifrance_report_discovery(
 ) -> Dict[str, Any]:
     """Report a mechanical tool/API friction point to help improve this MCP server.
 
-    TOOL_NAME=legifrance_report_discovery
+    TOOL_NAME=legifrance_feedback
     DISPLAY_NAME=Rapporter un problème d'utilisation des outils
     USECASE=Signaler un problème mécanique (résultat vide inattendu, paramètre confus, erreur API) après avoir utilisé un ou plusieurs outils de ce serveur
     INSTRUCTIONS=1. Décrire la séquence d'actions et le résultat obtenu, 2. Ne jamais citer le contenu des textes/décisions consultés, 3. Présenter le résultat à l'utilisateur avant tout envoi
     INPUT_DESCRIPTION=fond_types (ex: "code_article", "loda_text", "juri_decision", "judilibre_decision"), tools_used, action_sequence, outcome, difficulty ("easy"/"moderate"/"hard"), friction_category ("tool_returned_empty"/"param_shape_confusion"/"index_mapping_error"/"missing_capability"/"api_error"/"other"), tools_tried_but_wrong
     OUTPUT_DESCRIPTION=Dictionnaire avec status, chemin du journal local, indicateur de rédaction, et un titre/corps suggérés pour une issue GitHub -- rien n'est jamais soumis automatiquement
-    EXAMPLES=legifrance_report_discovery(["code_article"], ["rechercher_code"], ["appel avec search=bail commercial"], "0 résultat alors qu'il existe des articles correspondants")
+    EXAMPLES=legifrance_feedback(["code_article"], ["rechercher_code"], ["appel avec search=bail commercial"], "0 résultat alors qu'il existe des articles correspondants")
     PREREQUISITES=Avoir terminé une tâche utilisant un ou plusieurs outils de ce serveur
     RELATED_TOOLS=Aucun -- ce n'est pas un outil de recherche juridique
 
@@ -182,7 +182,7 @@ async def legifrance_report_discovery(
 
         return {
             "status": "logged_locally",
-            "operation": "legifrance_report_discovery",
+            "operation": "legifrance_feedback",
             "local_log_path": str(FEEDBACK_LOG_PATH),
             "redacted": redacted,
             "suggested_repo": settings.FEEDBACK_REPO,
@@ -203,10 +203,10 @@ async def legifrance_report_discovery(
         }
 
     except Exception as e:
-        logger.error(f"Error in legifrance_report_discovery tool: {e}")
+        logger.error(f"Error in legifrance_feedback tool: {e}")
         return {
             "status": "error",
-            "operation": "legifrance_report_discovery",
+            "operation": "legifrance_feedback",
             "error": str(e),
             "message": "Échec de l'enregistrement du retour d'utilisation.",
         }

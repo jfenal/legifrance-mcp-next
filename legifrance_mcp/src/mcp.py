@@ -11,7 +11,7 @@ from legifrance_mcp.src.rate_limit import judilibre_rate_limit, legifrance_rate_
 from legifrance_mcp.src.settings import settings
 
 # Import tools from the tools package
-from legifrance_mcp.src.tools.feedback_tool import legifrance_report_discovery
+from legifrance_mcp.src.tools.feedback_tool import legifrance_feedback
 from legifrance_mcp.src.tools.get_text_history_tool import get_text_history
 from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
 from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
@@ -68,7 +68,7 @@ class LegifranceMCPServer:
         - rechercher_jurisprudence_judiciaire: Recherche de jurisprudence (JURI)
         - rechercher_jurisprudence_judilibre: Recherche de jurisprudence (Judilibre)
         - get_text_history: Historique des modifications d'un texte légal
-        - legifrance_report_discovery: Retour d'utilisation (friction mécanique des outils)
+        - legifrance_feedback: Retour d'utilisation (friction mécanique des outils)
         """
         # Rate-limited at registration time (not by decorating the tool
         # functions directly) to PISTE's real published per-second quotas --
@@ -80,4 +80,4 @@ class LegifranceMCPServer:
         self.mcp.tool()(judilibre_rate_limit(rechercher_jurisprudence_judilibre))
         self.mcp.tool()(legifrance_rate_limit(get_text_history))
         # Not rate-limited: writes to a local log file only, no PISTE call.
-        self.mcp.tool()(legifrance_report_discovery)
+        self.mcp.tool()(legifrance_feedback)

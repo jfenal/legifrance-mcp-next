@@ -118,7 +118,7 @@ class Settings(BaseSettings):
         default="jfenal/legifrance-mcp",
         json_schema_extra={
             "env": "FEEDBACK_REPO",
-            "description": "GitHub repo (owner/name) legifrance_report_discovery suggests filing feedback issues against",
+            "description": "GitHub repo (owner/name) legifrance_feedback suggests filing feedback issues against",
         },
     )
     PYTHON_LOG_LEVEL: str = Field(

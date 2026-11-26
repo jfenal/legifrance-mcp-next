@@ -35,7 +35,7 @@ async def stdio_server(tmp_path):
     # Inherit the real environment (sys.executable already pins the venv
     # to use; python-dotenv's load_dotenv() will also pick up this repo's
     # own .env if one exists, which is harmless here since the only tool
-    # call made in these tests, legifrance_report_discovery, never touches
+    # call made in these tests, legifrance_feedback, never touches
     # PISTE) and override only what these tests actually care about.
     env = {**os.environ, "MCP_TRANSPORT_PROTOCOL": "stdio", "ENABLE_AUTH": "False"}
     log_file = tmp_path / "server.log"
@@ -95,7 +95,7 @@ class TestStdioProtocolPurity:
                 "id": 2,
                 "method": "tools/call",
                 "params": {
-                    "name": "legifrance_report_discovery",
+                    "name": "legifrance_feedback",
                     "arguments": {
                         "fond_types": ["code_article"],
                         "tools_used": ["rechercher_code"],

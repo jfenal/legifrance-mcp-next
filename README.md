@@ -19,7 +19,7 @@ Il repose sur [FastMCP](https://gofastmcp.com/) et l'architecture "tools-first" 
 | `rechercher_jurisprudence_judiciaire` | Recherche dans la jurisprudence judiciaire (fonds JURI de Légifrance) |
 | `rechercher_jurisprudence_judilibre` | Recherche de décisions de justice via l'API Judilibre (Cour de cassation, juridictions du fond) |
 | `get_text_history` | Historique des modifications (créations, modifications, abrogations d'articles) d'un texte légal |
-| `legifrance_report_discovery` | Signalement de friction mécanique dans l'usage des outils (journalisation locale uniquement, jamais soumis automatiquement) |
+| `legifrance_feedback` | Signalement de friction mécanique dans l'usage des outils (journalisation locale uniquement, jamais soumis automatiquement) |
 
 ## Prérequis
 

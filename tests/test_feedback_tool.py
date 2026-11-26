@@ -1,4 +1,4 @@
-"""Tests for the agent feedback pipeline (legifrance_report_discovery).
+"""Tests for the agent feedback pipeline (legifrance_feedback).
 
 Modeled on google-workspace-mcp's workspace_report_discovery, adapted to
 this template's Dict[str, Any]/status tool-return convention (the
@@ -11,7 +11,7 @@ import json
 from unittest.mock import patch
 
 from legifrance_mcp.src.tools.feedback_tool import (
-    legifrance_report_discovery,
+    legifrance_feedback,
     sanitize_for_submission,
 )
 
@@ -72,7 +72,7 @@ class TestLegifranceReportDiscovery:
             "legifrance_mcp.src.tools.feedback_tool.FEEDBACK_LOG_PATH",
             tmp_path / "feedback.jsonl",
         ):
-            result = await legifrance_report_discovery(
+            result = await legifrance_feedback(
                 fond_types=["code_article"],
                 tools_used=["rechercher_code"],
                 action_sequence=["called rechercher_code with search=bail commercial"],
@@ -93,7 +93,7 @@ class TestLegifranceReportDiscovery:
             "legifrance_mcp.src.tools.feedback_tool.FEEDBACK_LOG_PATH",
             tmp_path / "feedback.jsonl",
         ):
-            result = await legifrance_report_discovery(
+            result = await legifrance_feedback(
                 fond_types=["judilibre_decision"],
                 tools_used=["rechercher_jurisprudence_judilibre"],
                 action_sequence=["called it twice with different page_size"],
@@ -114,7 +114,7 @@ class TestLegifranceReportDiscovery:
             "legifrance_mcp.src.tools.feedback_tool.FEEDBACK_LOG_PATH",
             tmp_path / "feedback.jsonl",
         ):
-            result = await legifrance_report_discovery(
+            result = await legifrance_feedback(
                 fond_types=["loda_text"],
                 tools_used=["get_text_history"],
                 action_sequence=["contacted jane.doe@example.com about the bug"],
@@ -130,7 +130,7 @@ class TestLegifranceReportDiscovery:
             "legifrance_mcp.src.tools.feedback_tool.FEEDBACK_LOG_PATH",
             tmp_path / "feedback.jsonl",
         ):
-            result = await legifrance_report_discovery(
+            result = await legifrance_feedback(
                 fond_types=["code_article"],
                 tools_used=["rechercher_code"],
                 action_sequence=["x"],
@@ -147,7 +147,7 @@ class TestLegifranceReportDiscovery:
             "legifrance_mcp.src.tools.feedback_tool._write_local_log",
             side_effect=OSError("disk full"),
         ):
-            result = await legifrance_report_discovery(
+            result = await legifrance_feedback(
                 fond_types=["code_article"],
                 tools_used=["rechercher_code"],
                 action_sequence=["x"],
