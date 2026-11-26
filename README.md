@@ -1,155 +1,111 @@
-# Legifrance MCP Server
+# legifrance-mcp
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12,3.13-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/jfenal/legifrance-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/jfenal/legifrance-mcp/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/jfenal/legifrance-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/jfenal/legifrance-mcp)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/jfenal/legifrance-mcp)
 
-A production-ready template for developing Model Context Protocol (MCP) servers using Python and FastMCP. This server provides a foundation for creating MCP-compliant servers with comprehensive examples of tools, structured logging, configuration management, and containerized deployment.
+Serveur [Model Context Protocol](https://modelcontextprotocol.io/introduction) permettant d'interroger les bases juridiques françaises (Légifrance, Judilibre) depuis des LLMs compatibles comme Claude.
 
-The template includes three example MCP tools: a multiply calculator, a code review prompt generator, and a Red Hat logo tool. It demonstrates best practices for MCP server development including proper error handling, health checks, multiple transport protocols (HTTP, SSE, streamable-HTTP), SSL support, and comprehensive development tooling.
+## Description
 
-## Features
+Ce projet implémente un serveur MCP qui donne accès aux ressources juridiques françaises (textes légaux, codes, jurisprudence) directement depuis un LLM, en authentifiant directement auprès de [PISTE](https://piste.gouv.fr/) (le portail officiel DILA), sans proxy tiers.
 
-- **FastMCP + FastAPI** with multiple transport protocols (HTTP, SSE, streamable-HTTP)
-- **Three example tools**: multiply calculator, code review prompt, Red Hat logo
-- **Pydantic configuration** via environment variables
-- **Structured JSON logging** with structlog
-- **SSL/TLS support** for secure deployments
-- **Container-ready** with Red Hat UBI base image
-- **OpenShift deployment** manifests included
-- **Full CI/CD** with GitHub Actions (tests, linting, security, releases)
-- **OAuth integration** with PostgreSQL token storage
+Il repose sur [FastMCP](https://gofastmcp.com/) et l'architecture "tools-first" du [template-mcp-server](https://github.com/redhat-data-and-ai/template-mcp-server) de Red Hat Data & AI, ce qui lui permet de fonctionner aussi bien en **stdio** (Claude Desktop, Cursor) qu'en **HTTP/SSE** (déploiement hébergé, par ex. sur OpenShift).
 
-## Quick Start
+## Outils disponibles
 
-```bash
-git clone https://github.com/jfenal/legifrance-mcp
-cd legifrance-mcp
-make install        # creates venv, installs deps + pre-commit hooks
-make local          # starts server on localhost:5001
-```
+| Outil | Description |
+| --- | --- |
+| `rechercher_code` | Recherche dans les codes juridiques français (ex: Code civil, Code du travail) |
+| `rechercher_dans_texte_legal` | Recherche d'articles dans les textes légaux (lois, ordonnances, décrets, arrêtés) |
+| `rechercher_jurisprudence_judiciaire` | Recherche dans la jurisprudence judiciaire (fonds JURI de Légifrance) |
+| `rechercher_jurisprudence_judilibre` | Recherche de décisions de justice via l'API Judilibre (Cour de cassation, juridictions du fond) |
+| `get_text_history` | Historique des modifications (créations, modifications, abrogations d'articles) d'un texte légal |
+| `legifrance_report_discovery` | Signalement de friction mécanique dans l'usage des outils (journalisation locale uniquement, jamais soumis automatiquement) |
 
-Pre-commit includes `gitleaks` (staged changes) and `detect-private-key` for secret scanning; CI also runs a full-repository Gitleaks scan. Also enable [GitHub Secret Scanning](https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning) and [Push Protection](https://docs.github.com/en/code-security/concepts/secret-security/push-protection) on the repository for defense in depth.
+## Prérequis
 
-Verify in another terminal:
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- Un compte [PISTE](https://piste.gouv.fr/registration) avec une application souscrite aux API **Légifrance** et **Judilibre** (CGU acceptées pour les deux, en sandbox comme en production) — voir la [FAQ officielle de l'API Légifrance](https://www.legifrance.gouv.fr/contenu/pied-de-page/foire-aux-questions-api) pour la procédure complète
+- Un client compatible MCP (Claude Desktop, Cursor, ou tout client parlant stdio/HTTP)
+
+## Installation
 
 ```bash
-curl http://localhost:5001/health
-```
-
-<details>
-<summary>Manual setup (without Make)</summary>
-
-```bash
-# Create venv and install
-uv venv && source .venv/bin/activate
-uv pip install -e ".[dev]"
-pre-commit install
-
-# Configure and run
+git clone https://github.com/jfenal/legifrance-mcp-next.git
+cd legifrance-mcp-next
+uv sync
 cp .env.example .env
-legifrance-mcp
+```
 
-# Verify
+Éditez `.env` avec vos identifiants PISTE. PISTE affiche deux panneaux de clés sur la même page d'application — ne les confondez pas :
+
+```bash
+# Panneau "Identifiants Oauth"
+LEGIFRANCE_OAUTH_ID=votre_oauth_client_id
+LEGIFRANCE_OAUTH_SECRET=votre_oauth_client_secret
+PISTE_ENV=sandbox  # ou "production" (défaut: "production")
+
+# Panneau "API Keys" -- requis pour rechercher_jurisprudence_judilibre
+JUDILIBRE_API_KEY=votre_api_key
+```
+
+## Utilisation
+
+### Transport stdio (Claude Desktop, Cursor)
+
+Pour un client local qui lance le serveur en sous-processus, configurez `MCP_TRANSPORT_PROTOCOL=stdio` :
+
+```json
+{
+  "mcpServers": {
+    "legifrance-mcp": {
+      "command": "uv",
+      "args": ["--directory", "/chemin/vers/legifrance-mcp-next", "run", "legifrance-mcp"],
+      "env": { "MCP_TRANSPORT_PROTOCOL": "stdio" }
+    }
+  }
+}
+```
+
+`uv run` gère l'environnement virtuel ; les identifiants PISTE sont chargés depuis le `.env` du dépôt. Sous stdio, stdout est réservé au protocole JSON-RPC : les logs sont systématiquement écrits sur stderr (jamais sur stdout), avec en option un fichier de log complet via `LOG_FILE_PATH`.
+
+### Transport HTTP (déploiement hébergé)
+
+```bash
+MCP_TRANSPORT_PROTOCOL=http uv run legifrance-mcp
 curl http://localhost:5001/health
 ```
 
-</details>
+Voir le [template-mcp-server](https://github.com/redhat-data-and-ai/template-mcp-server) pour la documentation complète du déploiement OpenShift, de l'authentification OAuth optionnelle (`ENABLE_AUTH`) et des autres variables de configuration héritées du template.
 
-## How to Use This Template
+### Exemple
 
-### Option 1: GitHub Template (Recommended)
+```
+> Recherche les conditions de validité du PACS dans le Code civil
 
-1. Click the **"Use this template"** button at the top of the repository page.
-2. Name your new repository (e.g., `my-mcp-server`).
-3. Clone your new repository and follow the [rename checklist](#rename-checklist) below.
+[appel de l'outil rechercher_code: search="pacte civil de solidarité", code_name="Code civil"]
 
-### Option 2: Manual Clone
+## Code civil — art. 515-1
+**État**: VIGUEUR
+**URL**: https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006428463
 
-```bash
-git clone https://github.com/jfenal/legifrance-mcp.git my-mcp-server
-cd my-mcp-server
-rm -rf .git
-git init
+Un pacte civil de solidarité est un contrat conclu par deux personnes
+physiques majeures, de sexe différent ou de même sexe, pour organiser
+leur vie commune.
 ```
 
-### Rename Checklist
+## Limitation de débit
 
-After creating your project, replace all references to `legifrance-mcp` and `legifrance_mcp` with your project name. The following files require updates:
+Les outils Légifrance et Judilibre sont soumis à une limitation de débit proactive alignée sur les quotas publiés par PISTE : 2 req/s et 25 000 req/jour par point d'accès (plafond compte de 20 req/s et 1 000 000 req/jour) pour les outils adossés à Légifrance, et 20 req/s / 1 000 000 req/jour pour Judilibre.
 
-| File / Directory          | What to Change                                                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `legifrance_mcp/`  | Rename the package directory (e.g.,`my_mcp_server/`)                                                                        |
-| `pyproject.toml`        | `name`, `project.scripts` entry, `[project.urls]`, `[tool.coverage.run] source`                                       |
-| `Makefile`              | References in `lint`, `local`, and deployment targets                                                                     |
-| `Containerfile`         | `COPY` source path and `CMD` module path                                                                                  |
-| `compose.yaml`          | `container_name`, service name, healthcheck URL                                                                             |
-| `deployment/openshift/` | App labels, image names, route hostnames in all manifests (`deployment.yaml`, `route.yaml`, `kustomization.yaml`, etc.) |
-| `.github/workflows/`    | Workflow names and paths                                                                                                      |
-| `README.md`             | Title, description, clone URL, and all badge URLs (tests, coverage, Codespaces)                                               |
-| `.env.example`          | Adjust defaults if your server uses a different port or protocol                                                              |
+## Origine
 
-### Verify Rename
+Ce dépôt descend de [jfenal/legifrance-mcp](https://github.com/jfenal/legifrance-mcp) (lui-même issu d'un fork de [pylegifrance/mcp-server-legifrance](https://github.com/pylegifrance/mcp-server-legifrance)), porté sur l'architecture FastMCP/tools-first du [template-mcp-server](https://github.com/redhat-data-and-ai/template-mcp-server) pour permettre un hébergement OpenShift tout en conservant le support stdio. Il s'appuie sur [un fork de pylegifrance](https://github.com/jfenal/pylegifrance) tant que les correctifs correspondants ne sont pas fusionnés dans le dépôt officiel.
 
-Run this to catch any leftover references:
+## Contribution
 
-```bash
-grep -rn "template.mcp" --include="*.py" --include="*.yaml" --include="*.yml" --include="*.toml" --include="*.md" .
-```
+Les contributions sont les bienvenues ! Voir la structure des outils dans [`legifrance_mcp/src/tools/README.md`](legifrance_mcp/src/tools/README.md). Ouvrez une issue ou une pull request pour toute amélioration ou correction.
 
-The output should be empty (or only match this README section itself).
-
-## Configuration
-
-| Variable                      | Default       | Description                                                          |
-| ----------------------------- | ------------- | -------------------------------------------------------------------- |
-| `MCP_HOST`                  | `localhost` | Server bind address                                                  |
-| `MCP_PORT`                  | `5001`      | Server port (1024-65535)                                             |
-| `MCP_TRANSPORT_PROTOCOL`    | `http`      | Transport protocol (`http`, `sse`, `streamable-http`)          |
-| `MCP_SSL_KEYFILE`           | `None`      | SSL private key file path                                            |
-| `MCP_SSL_CERTFILE`          | `None`      | SSL certificate file path                                            |
-| `ENABLE_AUTH`               | `False`*    | Enable OAuth authentication (see [Auth Guide](docs/authentication.md)) |
-| `USE_EXTERNAL_BROWSER_AUTH` | `False`     | Browser-based OAuth for local dev                                    |
-| `PYTHON_LOG_LEVEL`          | `INFO`      | Logging level                                                        |
-
-*\* `ENABLE_AUTH` defaults to `False` in `.env.example` but `True` in code. Always copy `.env.example` to `.env` to start with auth disabled.*
-
-## Documentation
-
-| Guide                                 | Description                                                |
-| ------------------------------------- | ---------------------------------------------------------- |
-| [Architecture](docs/architecture.md)     | System diagrams, code structure, key components, MCP tools |
-| [Development](docs/development.md)       | Setup, running locally, testing, code quality              |
-| [Deployment](docs/deployment.md)         | Podman, OpenShift, container configuration                 |
-| [CI/CD](docs/ci-cd.md)                   | Workflows, pipeline features, running CI locally           |
-| [Contributing](CONTRIBUTING.md)          | Development workflow, commit conventions, PR process       |
-| [Security](SECURITY.md)                  | Vulnerability reporting policy                             |
-| [Changelog](CHANGELOG.md)                | Release history                                            |
-| [Authentication](docs/authentication.md) | OAuth setup, auth modes, troubleshooting                   |
-| [Tutorial](docs/tutorial.md)             | Your First Tool in 5 Minutes                               |
-| [Examples](examples/)                    | FastMCP and LangGraph client examples                      |
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
-```bash
-# Fork, clone, and set up
-git clone https://github.com/<your-username>/legifrance-mcp.git
-cd legifrance-mcp
-make install
-
-# Create a branch, make changes, verify
-git checkout -b feat/your-feature
-make lint && make test && make pre-commit
-
-# Commit and open a PR
-git commit -m "feat: your descriptive message"
-git push origin feat/your-feature
-```
-
-## License
+## Licence
 
 [Apache 2.0](LICENSE)
