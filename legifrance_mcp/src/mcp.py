@@ -12,6 +12,7 @@ from legifrance_mcp.src.settings import settings
 
 # Import tools from the tools package
 from legifrance_mcp.src.tools.feedback_tool import legifrance_feedback
+from legifrance_mcp.src.tools.get_article_tool import get_article
 from legifrance_mcp.src.tools.get_text_history_tool import get_text_history
 from legifrance_mcp.src.tools.rechercher_code_tool import rechercher_code
 from legifrance_mcp.src.tools.rechercher_judilibre_tool import (
@@ -67,6 +68,7 @@ class LegifranceMCPServer:
         In tools-first architecture, the server only provides tools.
         Currently includes:
         - rechercher_code: Recherche dans les codes juridiques
+        - get_article: Récupération directe de la version en vigueur d'un article
         - rechercher_dans_texte_legal: Recherche dans les textes légaux
         - rechercher_jurisprudence_judiciaire: Recherche de jurisprudence judiciaire (JURI)
         - rechercher_jurisprudence_administrative: Recherche de jurisprudence administrative (CETAT)
@@ -79,6 +81,7 @@ class LegifranceMCPServer:
         # 2 req/s for Légifrance-backed tools, 20 req/s for Judilibre -- so
         # unit tests calling these functions directly never hit the limiter.
         self.mcp.tool()(legifrance_rate_limit(rechercher_code))
+        self.mcp.tool()(legifrance_rate_limit(get_article))
         self.mcp.tool()(legifrance_rate_limit(rechercher_dans_texte_legal))
         self.mcp.tool()(legifrance_rate_limit(rechercher_jurisprudence_judiciaire))
         self.mcp.tool()(legifrance_rate_limit(rechercher_jurisprudence_administrative))

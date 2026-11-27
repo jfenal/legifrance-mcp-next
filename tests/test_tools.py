@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from legifrance_mcp.src.tools.get_article_tool import get_article
 from legifrance_mcp.src.tools.get_text_history_tool import (
     _resolve_loda_text,
     get_text_history,
@@ -153,6 +154,61 @@ class TestRechercherCode:
                 search="x", code_name="Code civil", uniquement_en_vigueur=False
             )
         with_formatter.with_legal_status.assert_not_called()
+
+
+class TestGetArticle:
+    async def test_unknown_code_name_returns_clear_error(self):
+        result = await get_article(code_name="Pas un code", num="1")
+        assert result["status"] == "error"
+        assert "Pas un code" in result["error"]
+
+    async def test_article_not_found_returns_explicit_message(self):
+        with patch("legifrance_mcp.src.tools.get_article_tool.Code") as mock_code_cls:
+            mock_code_cls.return_value.get_article.side_effect = ValueError(
+                "Article 9999 non trouvé dans Code civil"
+            )
+            result = await get_article(code_name="Code civil", num="9999")
+        assert result["status"] == "success"
+        assert result["result"] == "Aucun résultat."
+        assert "9999" in result["message"]
+
+    async def test_returns_formatted_article_on_success(self):
+        article = MagicMock(
+            code_name="Code civil",
+            number="1134",
+            title=None,
+            legal_status="VIGUEUR",
+            url="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032041008",
+            content="Les contrats légalement formés...",
+            version_date=datetime(2016, 10, 1),
+        )
+        with patch("legifrance_mcp.src.tools.get_article_tool.Code") as mock_code_cls:
+            mock_code_cls.return_value.get_article.return_value = article
+            result = await get_article(code_name="Code civil", num="1134")
+        assert result["status"] == "success"
+        assert "1134" in result["result"]
+        assert "VIGUEUR" in result["result"]
+        assert "01/10/2016" in result["result"]
+
+    async def test_resolve_code_name_is_accent_tolerant(self):
+        with patch("legifrance_mcp.src.tools.get_article_tool.Code") as mock_code_cls:
+            mock_code_cls.return_value.get_article.side_effect = ValueError(
+                "non trouvé"
+            )
+            result = await get_article(code_name="Code penal", num="1")
+        assert result["status"] == "success"
+        mock_code_cls.return_value.get_article.assert_called_once_with(
+            "Code pénal", "1"
+        )
+
+    async def test_unexpected_exception_returns_error_dict(self):
+        with patch(
+            "legifrance_mcp.src.tools.get_article_tool.Code",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await get_article(code_name="Code civil", num="1")
+        assert result["status"] == "error"
+        assert "boom" in result["error"]
 
 
 class TestRechercherTexteLegal:
